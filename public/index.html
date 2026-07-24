@@ -170,6 +170,15 @@
                             <textarea name="additional_context" required class="w-full rounded-lg px-4 py-2.5 text-sm h-20 resize-y outline-none transition-all">Founder-led, 3 institutional investors on the cap table, strong NPS</textarea>
                         </div>
                         
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">AI Engine</label>
+                            <select name="modelSelection" class="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all cursor-pointer">
+                                <option value="auto">Auto (Smart Routing: Gemma for Logic, GPT for Prose)</option>
+                                <option value="google/gemma-4-31b-it:free">Google Gemma 4 31B (Pure)</option>
+                                <option value="openai/gpt-oss-20b:free">OpenAI GPT-OSS 20B (Pure)</option>
+                            </select>
+                        </div>
+                        
                         <button type="submit" id="submitBtn" class="mt-4 w-full bg-accent text-white font-semibold rounded-lg py-3 hover:bg-orange-600 transition-colors shadow-[0px_4px_16px_rgba(249,115,22,0.3)] flex items-center justify-center gap-2">
                             <span>Execute Pipeline</span>
                             <div id="btnSpinner" class="spinner hidden"></div>
@@ -378,7 +387,7 @@
 
                 // STEP 2
                 updateProgress(2, 40);
-                res = await fetch('/api/step2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step1Output }) });
+                res = await fetch('/api/step2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step1Output, modelSelection: data.modelSelection }) });
                 if (!res.ok) throw new Error("Step 2 failed");
                 json = await res.json();
                 const step2Output = json.output;
@@ -386,7 +395,7 @@
 
                 // STEP 3
                 updateProgress(3, 65);
-                res = await fetch('/api/step3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step2Output }) });
+                res = await fetch('/api/step3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step2Output, modelSelection: data.modelSelection }) });
                 if (!res.ok) throw new Error("Step 3 failed");
                 json = await res.json();
                 const step3Output = json.output;
@@ -394,7 +403,7 @@
 
                 // STEP 4
                 updateProgress(4, 90);
-                res = await fetch('/api/step4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step3Output }) });
+                res = await fetch('/api/step4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step3Output, modelSelection: data.modelSelection }) });
                 if (!res.ok) throw new Error("Step 4 failed");
                 json = await res.json();
                 const step4Output = json.output;

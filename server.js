@@ -19,8 +19,10 @@ if (!OPENROUTER_API_KEY) {
     console.warn("WARNING: OPENROUTER_API_KEY is not set in environment variables.");
 }
 
-async function callModel(prompt) {
+async function callModel(prompt, modelOverride) {
     const fetch = (await import('node-fetch')).default;
+    const actualModel = modelOverride || MODEL;
+    
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -28,7 +30,7 @@ async function callModel(prompt) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: MODEL,
+            model: actualModel,
             messages: [
                 { role: 'user', content: prompt }
             ]
@@ -46,7 +48,12 @@ async function callModel(prompt) {
 
 app.post('/api/step1', async (req, res) => {
     try {
-        const { company, what_they_do, financials, deal_type, deal_size, preferred_structure, additional_context } = req.body;
+        const { company, what_they_do, financials, deal_type, deal_size, preferred_structure, additional_context, modelSelection } = req.body;
+        
+        let stepModel = 'google/gemma-4-31b-it:free';
+        if (modelSelection === 'openai/gpt-oss-20b:free') stepModel = 'openai/gpt-oss-20b:free';
+        // if auto, keep gemma for data extraction (step 1)
+
         const prompt = `You are a data extraction assistant for an investment advisory firm. Your only job in this step is to take the raw deal inputs below and reorganize them into a clean structured format. Do not analyze, do not infer, do not add anything that isn't explicitly stated. If a detail isn't given, write "Not specified" rather than guessing.
 
 RAW INPUTS:
@@ -69,8 +76,8 @@ Output as a structured fact sheet with these exact headers:
 
 Keep every line factual and traceable to the input. No commentary.`;
         
-        console.log("Running Step 1...");
-        const output = await callModel(prompt);
+        console.log(`Running Step 1 with ${stepModel}...`);
+        const output = await callModel(prompt, stepModel);
         res.json({ output });
     } catch (error) {
         console.error("Error in step 1:", error);
@@ -80,7 +87,12 @@ Keep every line factual and traceable to the input. No commentary.`;
 
 app.post('/api/step2', async (req, res) => {
     try {
-        const { step1Output } = req.body;
+        const { step1Output, modelSelection } = req.body;
+        
+        let stepModel = 'google/gemma-4-31b-it:free';
+        if (modelSelection === 'openai/gpt-oss-20b:free') stepModel = 'openai/gpt-oss-20b:free';
+        // if auto, keep gemma for reasoning & analysis (step 2)
+
         const prompt = `You are a credit analyst at an investment advisory firm reviewing a new mandate. Below is a structured fact sheet on a company seeking financing. Your job is to reason through what these facts actually imply, not to write the brief yet, just to think it through clearly.
 
 ${step1Output}
@@ -99,8 +111,8 @@ Answer these questions directly, in plain analytical language:
 
 Do not write brief-style prose yet. Just reason through each point clearly and specifically, referencing the actual facts given.`;
         
-        console.log("Running Step 2...");
-        const output = await callModel(prompt);
+        console.log(`Running Step 2 with ${stepModel}...`);
+        const output = await callModel(prompt, stepModel);
         res.json({ output });
     } catch (error) {
         console.error("Error in step 2:", error);
@@ -110,7 +122,12 @@ Do not write brief-style prose yet. Just reason through each point clearly and s
 
 app.post('/api/step3', async (req, res) => {
     try {
-        const { step2Output } = req.body;
+        const { step2Output, modelSelection } = req.body;
+
+        let stepModel = 'google/gemma-4-31b-it:free';
+        if (modelSelection === 'openai/gpt-oss-20b:free') stepModel = 'openai/gpt-oss-20b:free';
+        if (modelSelection === 'auto') stepModel = 'openai/gpt-oss-20b:free'; // if auto, use GPT for prose generation (step 3)
+
         const prompt = `You are drafting an initial deal brief for the delivery team at an investment advisory firm. This brief will be reviewed and refined by a human analyst before going anywhere near a client or lender, so it needs to be a strong, honest first draft, not a polished final document.
 
 Below is the analysis to work from:
@@ -133,8 +150,8 @@ Rules for how you write this:
 - Where there's a genuine tension or open question, say so plainly rather than glossing over it.
 - Keep the whole brief tight, aim for around 500-700 words total.`;
 
-        console.log("Running Step 3...");
-        const output = await callModel(prompt);
+        console.log(`Running Step 3 with ${stepModel}...`);
+        const output = await callModel(prompt, stepModel);
         res.json({ output });
     } catch (error) {
         console.error("Error in step 3:", error);
@@ -144,7 +161,12 @@ Rules for how you write this:
 
 app.post('/api/step4', async (req, res) => {
     try {
-        const { step3Output } = req.body;
+        const { step3Output, modelSelection } = req.body;
+
+        let stepModel = 'google/gemma-4-31b-it:free';
+        if (modelSelection === 'openai/gpt-oss-20b:free') stepModel = 'openai/gpt-oss-20b:free';
+        if (modelSelection === 'auto') stepModel = 'openai/gpt-oss-20b:free'; // if auto, use GPT for prose polishing (step 4)
+
         const prompt = `Below is a draft deal brief. Review it critically against this checklist, then produce a revised final version.
 
 ${step3Output}
@@ -158,8 +180,8 @@ Checklist to apply:
 
 Output the final, revised deal brief only, five sections, same headers as before, ready to hand to a human reviewer.`;
 
-        console.log("Running Step 4...");
-        const output = await callModel(prompt);
+        console.log(`Running Step 4 with ${stepModel}...`);
+        const output = await callModel(prompt, stepModel);
         res.json({ output });
     } catch (error) {
         console.error("Error in step 4:", error);
