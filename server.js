@@ -280,39 +280,37 @@ app.post('/api/generate-pdf', async (req, res) => {
     try {
         const { markdown, companyName } = req.body;
 
-        // Beamer Formatting Fixes (Spacious layout, better margins, professional theme)
-        let latex = `\\documentclass[aspectratio=169, 11pt]{beamer}
-\\usetheme{Boadilla}
-\\usecolortheme{whale}
+        // Professional Article Layout
+        let latex = `\\documentclass[11pt, a4paper]{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage[T1]{fontenc}
 \\usepackage{helvet}
 \\usepackage{setspace}
+\\usepackage[margin=1in]{geometry}
+\\usepackage{xcolor}
+\\usepackage{titlesec}
 \\renewcommand{\\familydefault}{\\sfdefault}
 
-\\setbeamertemplate{navigation symbols}{} % Hide nav bar
-\\setbeamersize{text margin left=8mm,text margin right=8mm} 
-\\setstretch{1.2} % Better line spacing
+\\definecolor{brandblue}{RGB}{20, 40, 80}
+\\titleformat{\\section}{\\vspace{1.5em}\\color{brandblue}\\normalfont\\Large\\bfseries}{}{0em}{}[\\vspace{0.2em}\\titlerule]
+\\titleformat{\\subsection}{\\vspace{1em}\\color{brandblue}\\normalfont\\large\\bfseries}{}{0em}{}
 
-\\title{Deal Brief: ${companyName}}
+\\setstretch{1.3} % Professional line spacing
+
+\\title{\\vspace{-4em}\\textbf{\\huge Deal Brief: ${companyName}}}
 \\author{Fuse Capital Group}
 \\date{\\today}
 
 \\begin{document}
-
-\\begin{frame}
-\\titlepage
-\\end{frame}
-
-\\begin{frame}[allowframebreaks]
-\\frametitle{Deal Overview}
+\\maketitle
+\\vspace{1em}
 `;
         
         let body = markdown || '';
         body = body.replace(/\\/g, '\\textbackslash{}')
                    .replace(/&/g, '\\&')
                    .replace(/%/g, '\\%')
-                   .replace(/\\\$/g, '\\$')
+                   .replace(/\$/g, '\\$')
                    .replace(/#/g, '\\#')
                    .replace(/_/g, '\\_')
                    .replace(/{/g, '\\{')
@@ -320,9 +318,9 @@ app.post('/api/generate-pdf', async (req, res) => {
                    .replace(/£/g, '\\pounds{}');
 
         body = body
-            .replace(/^### (.*$)/gim, '\\vspace{0.8em}\\textbf{\\large $1}\\par\\vspace{0.3em}')
-            .replace(/^## (.*$)/gim, '\\vspace{1.5em}\\textcolor{blue}{\\textbf{\\Large $1}}\\par\\vspace{0.5em}')
-            .replace(/^# (.*$)/gim, '\\vspace{1.5em}\\textcolor{blue}{\\textbf{\\huge $1}}\\par\\vspace{1em}')
+            .replace(/^### (.*$)/gim, '\\subsection*{$1}')
+            .replace(/^## (.*$)/gim, '\\section*{$1}')
+            .replace(/^# (.*$)/gim, '\\section*{$1}')
             .replace(/\*\*(.*?)\*\*/g, '\\textbf{$1}')
             .replace(/\*(.*?)\*/g, '\\textit{$1}');
 
@@ -334,23 +332,23 @@ app.post('/api/generate-pdf', async (req, res) => {
             line = line.trim();
             if (line.startsWith('- ')) {
                 if (!inList) {
-                    parsedLines.push('\\vspace{0.3em}\\begin{itemize}\\setlength{\\itemsep}{0.5em}');
+                    parsedLines.push('\\begin{itemize}\\setlength{\\itemsep}{0.3em}');
                     inList = true;
                 }
                 parsedLines.push(`  \\item ${line.substring(2)}`);
             } else {
                 if (inList) {
-                    parsedLines.push('\\end{itemize}\\vspace{0.3em}');
+                    parsedLines.push('\\end{itemize}');
                     inList = false;
                 }
                 if (line.length > 0) {
-                    parsedLines.push(line + '\\\\ \\vspace{0.3em}'); // Spacing after paragraphs
+                    parsedLines.push(line + '\\\\'); // Spacing after paragraphs
                 }
             }
         }
-        if (inList) parsedLines.push('\\end{itemize}\\vspace{0.3em}');
+        if (inList) parsedLines.push('\\end{itemize}');
 
-        latex += parsedLines.join('\n') + '\n\\end{frame}\n\\end{document}';
+        latex += parsedLines.join('\n') + '\n\\end{document}';;
 
         // Use texlive.net API for reliable LaTeX compilation
         const formattedLatex = latex.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');

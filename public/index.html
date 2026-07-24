@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -306,29 +306,8 @@
                     <p class="text-slate-500 text-sm max-w-xs leading-relaxed">The multi-agent pipeline is dormant. Submit your deal parameters or a custom prompt to spin up the agents.</p>
                 </div>
 
-                <!-- Results State (Hidden initially) -->
+                <!-- Agent Traceability Logs (Shown immediately) -->
                 <div id="resultsState" class="hidden flex-col gap-6">
-                    
-                    <!-- Final Brief Header & Download -->
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                        <div>
-                            <h2 class="font-serif text-3xl text-slate-900">Final Deal Brief</h2>
-                            <p class="text-sm text-slate-500">Pipeline complete. Output tightened and formatted.</p>
-                        </div>
-                        <button id="downloadPdfBtn" class="flex items-center gap-2 bg-accent hover:bg-orange-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-[0px_4px_16px_rgba(249,115,22,0.3)] transition-all">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            <span id="pdfBtnText">Download PDF</span>
-                        </button>
-                    </div>
-
-                    <!-- Final Brief Content Preview -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div id="pdfContent" class="p-8 sm:p-12 prose prose-slate max-w-none prose-headings:font-serif prose-headings:text-slate-900 prose-h2:text-2xl prose-h2:border-b prose-h2:pb-2 prose-h2:border-slate-100 prose-p:text-slate-700">
-                            <!-- Injected by JS -->
-                        </div>
-                    </div>
-
-                    <!-- Intermediate Traceability -->
                     <div class="mt-4">
                         <h3 class="font-serif text-2xl text-white mb-4">Agent Traceability Logs</h3>
                         <div class="flex flex-col gap-3">
@@ -373,6 +352,43 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Final Brief State (Hidden initially, shown when 100% done) -->
+                <div id="finalBriefState" class="hidden flex-col gap-6 mt-8">
+                    <!-- Final Brief Header & Download -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-black/40 backdrop-blur-xl p-6 rounded-2xl shadow-sm border border-white/10">
+                        <div>
+                            <h2 class="font-serif text-3xl text-white">Final Deal Brief</h2>
+                            <p class="text-sm text-slate-400">Pipeline complete. Output tightened and formatted.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button id="downloadStandardPdfBtn" class="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold py-2 px-4 rounded-lg transition-all border border-white/10">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <span>Standard PDF</span>
+                            </button>
+                            <button id="downloadPdfBtn" class="flex items-center gap-2 bg-accent hover:bg-orange-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-[0px_4px_16px_rgba(249,115,22,0.3)] transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path></svg>
+                                <span id="pdfBtnText">LaTeX PDF</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Final Brief Content Preview (ChatGPT Style) -->
+                    <div class="bg-[#1a1a24] rounded-xl border border-white/10 overflow-hidden shadow-2xl">
+                        <!-- Header Bar for Copy Button -->
+                        <div class="flex items-center justify-between bg-black/40 px-4 py-2 border-b border-white/10">
+                            <span class="text-xs font-medium text-slate-400">Generated Brief</span>
+                            <button id="copyTextBtn" class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                <span id="copyBtnText">Copy Text</span>
+                            </button>
+                        </div>
+                        <!-- Content -->
+                        <div id="pdfContent" class="p-6 sm:p-10 prose prose-invert max-w-none prose-headings:font-serif prose-headings:font-normal prose-h2:text-2xl prose-h2:border-b prose-h2:pb-2 prose-h2:border-white/10 prose-p:text-slate-300 prose-a:text-accent prose-strong:text-white text-sm leading-relaxed">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div></div>
             </div>
         </div>
     </section>
@@ -538,6 +554,8 @@
             progressTracker.classList.remove('hidden');
             resultsState.classList.remove('hidden');
             resultsState.classList.add('flex');
+            document.getElementById('finalBriefState').classList.add('hidden');
+            document.getElementById('finalBriefState').classList.remove('flex');
             
             document.getElementById('outStep1').textContent = 'Waiting for Agent...';
             document.getElementById('outStep2').textContent = '';
@@ -632,6 +650,8 @@
                     document.getElementById('pdfContent').innerHTML = parseMarkdownToHtml(step4Output);
 
                     updateProgress(5, 100);
+                    document.getElementById('finalBriefState').classList.remove('hidden');
+                    document.getElementById('finalBriefState').classList.add('flex');
                 }
             } catch (error) {
                 if (error.name === 'AbortError') {
@@ -655,33 +675,80 @@
         }
 
         function parseMarkdownToHtml(md) {
-            let html = md.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            html = html.replace(/\n\n/g, '</p><p>');
-            return '<p>' + html + '</p>';
+            return marked.parse(md);
         }
 
         document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
-            const btn = document.getElementById('downloadPdfBtn');
+            if (!finalMarkdownOutput) return;
             const btnText = document.getElementById('pdfBtnText');
             const originalText = btnText.textContent;
+            btnText.textContent = "Compiling LaTeX...";
             try {
-                btn.disabled = true;
-                btnText.textContent = 'Generating PDF...';
-                
-                let companyName = 'Deal';
-                if(!isCustomMode) {
-                    const compInput = document.querySelector('input[name="company"]');
-                    if(compInput) companyName = compInput.value.split(',')[0].trim();
-                } else {
-                    companyName = 'Custom_Brief';
-                }
-                
-                const response = await fetch('/api/generate-pdf', {
+                const companyName = document.getElementById('companyName').value || "Company";
+                const res = await fetch('/api/generate-pdf', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ markdown: finalMarkdownOutput, companyName })
                 });
+                
+                if (!res.ok) {
+                    const errData = await res.json().catch(()=>({}));
+                    throw new Error(errData.error || res.statusText);
+                }
+
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${companyName.replace(/\s+/g, '_')}_Deal_Brief_LaTeX.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error(err);
+                alert("Failed to generate LaTeX PDF: " + err.message);
+            } finally {
+                btnText.textContent = originalText;
+            }
+        });
+
+        document.getElementById('downloadStandardPdfBtn').addEventListener('click', () => {
+            if (!finalMarkdownOutput) return;
+            const element = document.getElementById('pdfContent');
+            const companyName = document.getElementById('companyName').value || "Company";
+            
+            // html2pdf options
+            const opt = {
+                margin:       10,
+                filename:     `${companyName.replace(/\s+/g, '_')}_Deal_Brief.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            // Temporary styling tweak for PDF to ensure dark bg prints properly
+            const oldBg = element.style.backgroundColor;
+            element.style.backgroundColor = '#1a1a24';
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.style.backgroundColor = oldBg;
+            });
+        });
+
+        document.getElementById('copyTextBtn').addEventListener('click', () => {
+            if (!finalMarkdownOutput) return;
+            navigator.clipboard.writeText(finalMarkdownOutput).then(() => {
+                const btnText = document.getElementById('copyBtnText');
+                const originalText = btnText.textContent;
+                btnText.textContent = "Copied!";
+                setTimeout(() => {
+                    btnText.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error("Failed to copy text: ", err);
+            });
+        });
 
                 if (!response.ok) {
                     const errData = await response.json().catch(()=>({}));
