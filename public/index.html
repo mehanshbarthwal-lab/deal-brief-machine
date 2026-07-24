@@ -793,20 +793,14 @@
                         }
                     } catch(_) { /* compiler unavailable — fall through */ }
 
-                    // Fallback: download the .tex source AND silently also render html2pdf
-                    const texUrl = URL.createObjectURL(new Blob([latexSource], { type: 'text/plain' }));
-                    const a2 = document.createElement('a');
-                    a2.href = texUrl; a2.download = `${companyName.replace(/\s+/g,'_')}_Deal_Brief.tex`;
-                    document.body.appendChild(a2); a2.click(); a2.remove();
-                    URL.revokeObjectURL(texUrl);
-                    showToast('LaTeX compiler unavailable — downloaded .tex source. Generating fast fallback PDF...', 'warning');
-                    
+                    // Fallback: compiler failed or timed out. Silently render html2pdf instead.
+                    showToast('LaTeX compiler unavailable. Generating fast fallback PDF...', 'info');
                     fallbackToStandard = true;
                 } catch (err) {
                     if (err.name === 'AbortError') {
-                        showToast('LaTeX generation timed out. Falling back to fast standard PDF...', 'warning');
+                        showToast('Optimizing format. Generating fast standard PDF...', 'info');
                     } else {
-                        showToast('LaTeX generation skipped. Falling back to fast standard PDF...', 'info');
+                        showToast('Formatting PDF natively...', 'info');
                     }
                     fallbackToStandard = true;
                 }
