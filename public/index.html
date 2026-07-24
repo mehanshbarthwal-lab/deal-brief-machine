@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deal Brief Machine</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; color: #333; }
+        h1, h2 { color: #111; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="text"], textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
+        textarea { resize: vertical; height: 60px; }
+        button { background-color: #0066cc; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0052a3; }
+        button:disabled { background-color: #999; cursor: not-allowed; }
+        #results { margin-top: 30px; display: none; }
+        .final-brief { background-color: #f9f9f9; border: 1px solid #ddd; padding: 20px; border-radius: 4px; white-space: pre-wrap; }
+        details { margin-bottom: 10px; background-color: #f1f1f1; border: 1px solid #ccc; border-radius: 4px; padding: 10px; }
+        summary { font-weight: bold; cursor: pointer; }
+        .step-output { margin-top: 10px; white-space: pre-wrap; font-family: monospace; font-size: 14px; background: #fff; padding: 10px; border: 1px solid #ddd; }
+        #loading { display: none; margin-top: 20px; font-weight: bold; color: #0066cc; }
+    </style>
+</head>
+<body>
+
+    <h1>Deal Brief Machine</h1>
+    <p>Submit company details to generate a 5-section financing deal brief via a 4-step LLM chain.</p>
+
+    <form id="dealForm">
+        <div class="form-group">
+            <label for="company">Company</label>
+            <input type="text" id="company" name="company" value="NovaBuild Technologies, a UK-based proptech SaaS business" required>
+        </div>
+        <div class="form-group">
+            <label for="what_they_do">What they do</label>
+            <textarea id="what_they_do" name="what_they_do" required>AI-driven project management platform for construction firms</textarea>
+        </div>
+        <div class="form-group">
+            <label for="financials">Financials</label>
+            <textarea id="financials" name="financials" required>£8.5m ARR, growing 65% YoY, not yet profitable (EBITDA -£1.2m)</textarea>
+        </div>
+        <div class="form-group">
+            <label for="deal_type">Deal Type</label>
+            <textarea id="deal_type" name="deal_type" required>Growth financing to accelerate expansion into the US market</textarea>
+        </div>
+        <div class="form-group">
+            <label for="deal_size">Deal Size</label>
+            <input type="text" id="deal_size" name="deal_size" value="£6m" required>
+        </div>
+        <div class="form-group">
+            <label for="preferred_structure">Preferred Structure</label>
+            <textarea id="preferred_structure" name="preferred_structure" required>Senior secured debt with a 4-year tenor</textarea>
+        </div>
+        <div class="form-group">
+            <label for="additional_context">Additional context</label>
+            <textarea id="additional_context" name="additional_context" required>Founder-led, 3 institutional investors on the cap table, strong NPS</textarea>
+        </div>
+        
+        <button type="submit" id="submitBtn">Generate Deal Brief</button>
+    </form>
+
+    <div id="loading">Running 4-step chain... this may take 30-60 seconds...</div>
+
+    <div id="results">
+        <h2>Intermediate Steps (Traceability)</h2>
+        <details>
+            <summary>Step 1: Extraction & Structuring</summary>
+            <div id="outStep1" class="step-output"></div>
+        </details>
+        <details>
+            <summary>Step 2: Analysis Pass</summary>
+            <div id="outStep2" class="step-output"></div>
+        </details>
+        <details>
+            <summary>Step 3: Initial Draft</summary>
+            <div id="outStep3" class="step-output"></div>
+        </details>
+
+        <h2>Final Deal Brief (Step 4: Self-Critique & Tighten)</h2>
+        <div id="outStep4" class="final-brief"></div>
+    </div>
+
+    <script>
+        document.getElementById('dealForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            results.style.display = 'none';
+
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/api/generate-brief', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'Unknown error occurred');
+                }
+
+                const result = await response.json();
+                
+                document.getElementById('outStep1').textContent = result.step1;
+                document.getElementById('outStep2').textContent = result.step2;
+                document.getElementById('outStep3').textContent = result.step3;
+                document.getElementById('outStep4').textContent = result.step4;
+                
+                results.style.display = 'block';
+            } catch (error) {
+                alert('Error generating brief: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
