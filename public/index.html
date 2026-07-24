@@ -180,7 +180,7 @@
                             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">AI Engine</label>
                             <select id="customModelSelection" class="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all cursor-pointer bg-white/5 border border-white/10 text-white">
                                 <option value="auto">Auto (Best for overall quality)</option>
-                                <option value="groq/llama-3.1-70b-versatile">Groq Llama 3 70B (Best for blazing fast responses)</option>
+                                <option value="x-ai/grok-4.20">xAI Grok 4.20 (Best for blazing fast responses)</option>
                                 <option value="google/gemma-2-27b-it">Google Gemma 27B (Best for logic & structuring)</option>
                                 <option value="openai/gpt-4o-mini">OpenAI GPT-4o Mini (Best for creative prose)</option>
                                 <option value="meta-llama/llama-3.1-8b-instruct">Meta LLaMA 3.1 8B (Best for fallback reliability)</option>
@@ -227,7 +227,7 @@
                             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">AI Engine</label>
                             <select name="modelSelection" class="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all cursor-pointer">
                                 <option value="auto">Auto (Best for overall quality)</option>
-                                <option value="groq/llama-3.1-70b-versatile">Groq Llama 3 70B (Best for blazing fast responses)</option>
+                                <option value="x-ai/grok-4.20">xAI Grok 4.20 (Best for blazing fast responses)</option>
                                 <option value="google/gemma-2-27b-it">Google Gemma 27B (Best for logic & structuring)</option>
                                 <option value="openai/gpt-4o-mini">OpenAI GPT-4o Mini (Best for creative prose)</option>
                                 <option value="meta-llama/llama-3.1-8b-instruct">Meta LLaMA 3.1 8B (Best for fallback reliability)</option>
@@ -566,7 +566,10 @@
                         signal 
                     });
                     
-                    if (!res.ok) throw new Error("Custom Pipeline failed.");
+                    if (!res.ok) {
+                        const errData = await res.json().catch(()=>({}));
+                        throw new Error(`Custom Pipeline failed: ${errData.error || res.statusText}`);
+                    }
                     const json = await res.json();
                     
                     finalMarkdownOutput = json.output;
@@ -584,7 +587,10 @@
 
                     updateProgress(1, 15);
                     let res = await fetch('/api/step1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), signal });
-                    if (!res.ok) throw new Error("Step 1 failed: " + res.statusText);
+                    if (!res.ok) {
+                        const errData = await res.json().catch(()=>({}));
+                        throw new Error(`Step 1 failed: ${errData.error || res.statusText}`);
+                    }
                     let json = await res.json();
                     if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step1Output = json.output;
@@ -592,7 +598,10 @@
 
                     updateProgress(2, 40);
                     res = await fetch('/api/step2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step1Output, modelSelection: data.modelSelection }), signal });
-                    if (!res.ok) throw new Error("Step 2 failed: " + res.statusText);
+                    if (!res.ok) {
+                        const errData = await res.json().catch(()=>({}));
+                        throw new Error(`Step 2 failed: ${errData.error || res.statusText}`);
+                    }
                     json = await res.json();
                     if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step2Output = json.output;
@@ -600,7 +609,10 @@
 
                     updateProgress(3, 65);
                     res = await fetch('/api/step3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step2Output, modelSelection: data.modelSelection }), signal });
-                    if (!res.ok) throw new Error("Step 3 failed: " + res.statusText);
+                    if (!res.ok) {
+                        const errData = await res.json().catch(()=>({}));
+                        throw new Error(`Step 3 failed: ${errData.error || res.statusText}`);
+                    }
                     json = await res.json();
                     if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step3Output = json.output;
@@ -608,7 +620,10 @@
 
                     updateProgress(4, 90);
                     res = await fetch('/api/step4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step3Output, modelSelection: data.modelSelection }), signal });
-                    if (!res.ok) throw new Error("Step 4 failed: " + res.statusText);
+                    if (!res.ok) {
+                        const errData = await res.json().catch(()=>({}));
+                        throw new Error(`Step 4 failed: ${errData.error || res.statusText}`);
+                    }
                     json = await res.json();
                     if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step4Output = json.output;
