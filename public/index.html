@@ -269,7 +269,7 @@
                         </div>
                         <button id="downloadPdfBtn" class="flex items-center gap-2 bg-accent hover:bg-orange-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-[0px_4px_16px_rgba(249,115,22,0.3)] transition-all">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            <span id="pdfBtnText">Download PDF (LaTeX)</span>
+                            <span id="pdfBtnText">Download PDF</span>
                         </button>
                     </div>
 
@@ -501,7 +501,7 @@
             return '<p>' + html + '</p>';
         }
 
-        // Backend PDF Generation (LaTeX)
+        // Backend PDF Generation
         document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
             const btn = document.getElementById('downloadPdfBtn');
             const btnText = document.getElementById('pdfBtnText');
@@ -509,7 +509,7 @@
             
             try {
                 btn.disabled = true;
-                btnText.textContent = 'Compiling LaTeX...';
+                btnText.textContent = 'Generating PDF...';
                 
                 const companyName = document.querySelector('input[name="company"]').value.split(',')[0].trim() || 'Deal';
                 

@@ -200,13 +200,14 @@ app.post('/api/generate-pdf', async (req, res) => {
     try {
         const { markdown, companyName } = req.body;
 
-        // Convert markdown to simple LaTeX
-        let latex = `\\documentclass[12pt]{article}
+        // Convert markdown to professional Beamer presentation
+        let latex = `\\documentclass[aspectratio=169]{beamer}
+\\usetheme{Boadilla}
+\\usecolortheme{whale}
 \\usepackage[utf8]{inputenc}
-\\usepackage{geometry}
-\\geometry{a4paper, margin=1in}
-\\usepackage{hyperref}
-\\usepackage{parskip}
+\\usepackage[T1]{fontenc}
+\\usepackage{helvet}
+\\renewcommand{\\familydefault}{\\sfdefault}
 
 \\title{Deal Brief: ${companyName}}
 \\author{Fuse Capital Group}
@@ -214,26 +215,39 @@ app.post('/api/generate-pdf', async (req, res) => {
 
 \\begin{document}
 
-\\maketitle
+\\begin{frame}
+\\titlepage
+\\end{frame}
 
+\\begin{frame}[allowframebreaks]
+\\frametitle{Deal Overview}
 `;
         
-        // Very basic markdown to latex converter for headings, bold, lists
-        let body = markdown
-            .replace(/^## (.*$)/gim, '\\section*{$1}')
-            .replace(/^# (.*$)/gim, '\\section*{$1}')
+        let body = markdown || '';
+        
+        // Escape latex characters safely
+        body = body.replace(/\\/g, '\\textbackslash{}')
+                   .replace(/&/g, '\\&')
+                   .replace(/%/g, '\\%')
+                   .replace(/\\\$([^]*?)\\\$/g, '$$$1$$') // protect math if any, else escape
+                   .replace(/\$/g, '\\$')
+                   .replace(/#/g, '\\#')
+                   .replace(/_/g, '\\_')
+                   .replace(/{/g, '\\{')
+                   .replace(/}/g, '\\}')
+                   .replace(/£/g, '\\pounds{}');
+
+        // Fix back the textbackslash we just broke if we need to... wait, no markdown doesn't have backslashes usually.
+        // Actually, we replace * and # after escaping so we don't escape our own LaTeX!
+        body = body
+            .replace(/^### (.*$)/gim, '\\vspace{1em}\\textbf{\\large $1}\\par\\vspace{0.5em}')
+            .replace(/^## (.*$)/gim, '\\vspace{1em}\\textcolor{blue}{\\textbf{\\Large $1}}\\par\\vspace{0.5em}')
+            .replace(/^# (.*$)/gim, '\\vspace{1em}\\textcolor{blue}{\\textbf{\\huge $1}}\\par\\vspace{1em}')
             .replace(/\*\*(.*?)\*\*/g, '\\textbf{$1}')
-            .replace(/\*(.*?)\*/g, '\\textit{$1}')
-            .replace(/&/g, '\\&')
-            .replace(/%/g, '\\%')
-            .replace(/\$/g, '\\$')
-            .replace(/#/g, '\\#')
-            .replace(/_/g, '\\_')
-            .replace(/{/g, '\\{')
-            .replace(/}/g, '\\}');
+            .replace(/\*(.*?)\*/g, '\\textit{$1}');
 
         // Handle simple itemized lists
-        const lines = body.split('\\n');
+        const lines = body.split('\n'); // FIXED: was '\\n' instead of '\n'
         let inList = false;
         let parsedLines = [];
         
@@ -250,17 +264,20 @@ app.post('/api/generate-pdf', async (req, res) => {
                     parsedLines.push('\\end{itemize}');
                     inList = false;
                 }
-                parsedLines.push(line);
+                if (line.length > 0) {
+                    parsedLines.push(line + '\\\\'); // Add newline for spacing in beamer
+                }
             }
         }
         if (inList) parsedLines.push('\\end{itemize}');
 
-        latex += parsedLines.join('\\n\\n') + '\\n\\end{document}';
+        latex += parsedLines.join('\n') + '\n\\end{frame}\n\\end{document}';
 
         // Fetch PDF from latexonline.cc
         const response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(latex));
         if (!response.ok) {
-            throw new Error(`LaTeX compilation failed: ${response.statusText}`);
+            const errText = await response.text();
+            throw new Error(`PDF compilation failed: ${response.statusText} - ${errText}`);
         }
 
         const buffer = await response.buffer();
