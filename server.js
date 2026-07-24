@@ -50,7 +50,7 @@ async function callModel(prompt, modelOverride, isFallback = false) {
     }
 
     const data = await response.json();
-    return data.choices[0].message.content;
+    return { text: data.choices[0].message.content, usedFallback: isFallback, actualModel: isFallback ? 'openai/gpt-oss-20b:free' : actualModel };
 }
 
 app.post('/api/step1', async (req, res) => {
@@ -58,7 +58,7 @@ app.post('/api/step1', async (req, res) => {
         const { company, what_they_do, financials, deal_type, deal_size, preferred_structure, additional_context, modelSelection } = req.body;
         
         let stepModel = 'google/gemma-4-31b-it:free';
-        if (modelSelection === 'openai/gpt-oss-20b:free') stepModel = 'openai/gpt-oss-20b:free';
+        if (modelSelection && modelSelection !== 'auto') stepModel = modelSelection;
         // if auto, keep gemma for data extraction (step 1)
 
         const prompt = `You are a data extraction assistant for an investment advisory firm. Your only job in this step is to take the raw deal inputs below and reorganize them into a clean structured format. Do not analyze, do not infer, do not add anything that isn't explicitly stated. If a detail isn't given, write "Not specified" rather than guessing.
@@ -84,8 +84,8 @@ Output as a structured fact sheet with these exact headers:
 Keep every line factual and traceable to the input. No commentary.`;
         
         console.log(`Running Step 1 with ${stepModel}...`);
-        const output = await callModel(prompt, stepModel);
-        res.json({ output });
+        const { text, usedFallback, actualModel } = await callModel(prompt, stepModel);
+        res.json({ output: text, usedFallback, actualModel });
     } catch (error) {
         console.error("Error in step 1:", error);
         res.status(500).json({ error: error.message });
@@ -97,7 +97,7 @@ app.post('/api/step2', async (req, res) => {
         const { step1Output, modelSelection } = req.body;
         
         let stepModel = 'google/gemma-4-31b-it:free';
-        if (modelSelection === 'openai/gpt-oss-20b:free') stepModel = 'openai/gpt-oss-20b:free';
+        if (modelSelection && modelSelection !== 'auto') stepModel = modelSelection;
         // if auto, keep gemma for reasoning & analysis (step 2)
 
         const prompt = `You are a credit analyst at an investment advisory firm reviewing a new mandate. Below is a structured fact sheet on a company seeking financing. Your job is to reason through what these facts actually imply, not to write the brief yet, just to think it through clearly.
@@ -119,8 +119,8 @@ Answer these questions directly, in plain analytical language:
 Do not write brief-style prose yet. Just reason through each point clearly and specifically, referencing the actual facts given.`;
         
         console.log(`Running Step 2 with ${stepModel}...`);
-        const output = await callModel(prompt, stepModel);
-        res.json({ output });
+        const { text, usedFallback, actualModel } = await callModel(prompt, stepModel);
+        res.json({ output: text, usedFallback, actualModel });
     } catch (error) {
         console.error("Error in step 2:", error);
         res.status(500).json({ error: error.message });
@@ -132,7 +132,7 @@ app.post('/api/step3', async (req, res) => {
         const { step2Output, modelSelection } = req.body;
 
         let stepModel = 'google/gemma-4-31b-it:free';
-        if (modelSelection === 'openai/gpt-oss-20b:free') stepModel = 'openai/gpt-oss-20b:free';
+        if (modelSelection && modelSelection !== 'auto') stepModel = modelSelection;
         if (modelSelection === 'auto') stepModel = 'openai/gpt-oss-20b:free'; // if auto, use GPT for prose generation (step 3)
 
         const prompt = `You are drafting an initial deal brief for the delivery team at an investment advisory firm. This brief will be reviewed and refined by a human analyst before going anywhere near a client or lender, so it needs to be a strong, honest first draft, not a polished final document.
@@ -158,8 +158,8 @@ Rules for how you write this:
 - Keep the whole brief tight, aim for around 500-700 words total.`;
 
         console.log(`Running Step 3 with ${stepModel}...`);
-        const output = await callModel(prompt, stepModel);
-        res.json({ output });
+        const { text, usedFallback, actualModel } = await callModel(prompt, stepModel);
+        res.json({ output: text, usedFallback, actualModel });
     } catch (error) {
         console.error("Error in step 3:", error);
         res.status(500).json({ error: error.message });
@@ -171,7 +171,7 @@ app.post('/api/step4', async (req, res) => {
         const { step3Output, modelSelection } = req.body;
 
         let stepModel = 'google/gemma-4-31b-it:free';
-        if (modelSelection === 'openai/gpt-oss-20b:free') stepModel = 'openai/gpt-oss-20b:free';
+        if (modelSelection && modelSelection !== 'auto') stepModel = modelSelection;
         if (modelSelection === 'auto') stepModel = 'openai/gpt-oss-20b:free'; // if auto, use GPT for prose polishing (step 4)
 
         const prompt = `Below is a draft deal brief. Review it critically against this checklist, then produce a revised final version.
@@ -188,8 +188,8 @@ Checklist to apply:
 Output the final, revised deal brief only, five sections, same headers as before, ready to hand to a human reviewer.`;
 
         console.log(`Running Step 4 with ${stepModel}...`);
-        const output = await callModel(prompt, stepModel);
-        res.json({ output });
+        const { text, usedFallback, actualModel } = await callModel(prompt, stepModel);
+        res.json({ output: text, usedFallback, actualModel });
     } catch (error) {
         console.error("Error in step 4:", error);
         res.status(500).json({ error: error.message });

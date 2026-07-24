@@ -74,6 +74,15 @@
 </head>
 <body class="antialiased selection:bg-accent/30 text-slate-200">
 
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-6 right-6 bg-orange-600/95 text-white px-6 py-4 rounded-xl shadow-[0_4px_30px_rgba(249,115,22,0.4)] border border-orange-400/30 transform transition-all duration-300 translate-x-[150%] opacity-0 z-50 flex items-center gap-3 backdrop-blur-md">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        <div>
+            <p class="text-sm font-bold tracking-wide">Network Rate Limit Detected</p>
+            <p class="text-xs text-white/90 mt-1 font-medium" id="toastMessage">Automatically switched to fallback model.</p>
+        </div>
+    </div>
+
     <!-- HERO SECTION -->
     <section class="relative h-screen w-full overflow-hidden flex flex-col">
         <!-- Background Video -->
@@ -180,6 +189,7 @@
                                 <option value="auto">Auto (Smart Routing: Gemma for Logic, GPT for Prose)</option>
                                 <option value="google/gemma-4-31b-it:free">Google Gemma 4 31B (Pure)</option>
                                 <option value="openai/gpt-oss-20b:free">OpenAI GPT-OSS 20B (Pure)</option>
+                                <option value="meta-llama/llama-3.1-8b-instruct:free">Meta LLaMA 3.1 8B (Pure)</option>
                             </select>
                         </div>
                         
@@ -323,6 +333,15 @@
     <script>
         let finalMarkdownOutput = '';
 
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.remove('translate-x-[150%]', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-x-[150%]', 'opacity-0');
+            }, 6000);
+        }
+
         function updateProgress(step, percent) {
             document.getElementById('progressPercent').textContent = percent + '%';
             document.getElementById('progressBar').style.width = percent + '%';
@@ -389,6 +408,7 @@
                     throw new Error("Step 1 failed: " + (errObj.error || res.statusText));
                 }
                 let json = await res.json();
+                if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                 const step1Output = json.output;
                 document.getElementById('outStep1').textContent = step1Output;
 
@@ -400,6 +420,7 @@
                     throw new Error("Step 2 failed: " + (errObj.error || res.statusText));
                 }
                 json = await res.json();
+                if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                 const step2Output = json.output;
                 document.getElementById('outStep2').textContent = step2Output;
 
@@ -411,6 +432,7 @@
                     throw new Error("Step 3 failed: " + (errObj.error || res.statusText));
                 }
                 json = await res.json();
+                if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                 const step3Output = json.output;
                 document.getElementById('outStep3').textContent = step3Output;
 
@@ -422,6 +444,7 @@
                     throw new Error("Step 4 failed: " + (errObj.error || res.statusText));
                 }
                 json = await res.json();
+                if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                 const step4Output = json.output;
                 
                 finalMarkdownOutput = step4Output;
