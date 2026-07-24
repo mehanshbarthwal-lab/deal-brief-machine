@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuration
-const MODEL = process.env.MODEL_NAME || 'nvidia/nemotron-3-ultra-550b-a55b:free';
+const MODEL = process.env.MODEL_NAME || 'google/gemma-4-31b-it:free';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 if (!OPENROUTER_API_KEY) {
@@ -44,12 +44,10 @@ async function callModel(prompt) {
     return data.choices[0].message.content;
 }
 
-app.post('/api/generate-brief', async (req, res) => {
+app.post('/api/step1', async (req, res) => {
     try {
         const { company, what_they_do, financials, deal_type, deal_size, preferred_structure, additional_context } = req.body;
-
-        // Step 1
-        const step1Prompt = `You are a data extraction assistant for an investment advisory firm. Your only job in this step is to take the raw deal inputs below and reorganize them into a clean structured format. Do not analyze, do not infer, do not add anything that isn't explicitly stated. If a detail isn't given, write "Not specified" rather than guessing.
+        const prompt = `You are a data extraction assistant for an investment advisory firm. Your only job in this step is to take the raw deal inputs below and reorganize them into a clean structured format. Do not analyze, do not infer, do not add anything that isn't explicitly stated. If a detail isn't given, write "Not specified" rather than guessing.
 
 RAW INPUTS:
 Company: ${company || 'Not specified'}
@@ -72,10 +70,18 @@ Output as a structured fact sheet with these exact headers:
 Keep every line factual and traceable to the input. No commentary.`;
         
         console.log("Running Step 1...");
-        const step1Output = await callModel(step1Prompt);
+        const output = await callModel(prompt);
+        res.json({ output });
+    } catch (error) {
+        console.error("Error in step 1:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
-        // Step 2
-        const step2Prompt = `You are a credit analyst at an investment advisory firm reviewing a new mandate. Below is a structured fact sheet on a company seeking financing. Your job is to reason through what these facts actually imply, not to write the brief yet, just to think it through clearly.
+app.post('/api/step2', async (req, res) => {
+    try {
+        const { step1Output } = req.body;
+        const prompt = `You are a credit analyst at an investment advisory firm reviewing a new mandate. Below is a structured fact sheet on a company seeking financing. Your job is to reason through what these facts actually imply, not to write the brief yet, just to think it through clearly.
 
 ${step1Output}
 
@@ -94,10 +100,18 @@ Answer these questions directly, in plain analytical language:
 Do not write brief-style prose yet. Just reason through each point clearly and specifically, referencing the actual facts given.`;
         
         console.log("Running Step 2...");
-        const step2Output = await callModel(step2Prompt);
+        const output = await callModel(prompt);
+        res.json({ output });
+    } catch (error) {
+        console.error("Error in step 2:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
-        // Step 3
-        const step3Prompt = `You are drafting an initial deal brief for the delivery team at an investment advisory firm. This brief will be reviewed and refined by a human analyst before going anywhere near a client or lender, so it needs to be a strong, honest first draft, not a polished final document.
+app.post('/api/step3', async (req, res) => {
+    try {
+        const { step2Output } = req.body;
+        const prompt = `You are drafting an initial deal brief for the delivery team at an investment advisory firm. This brief will be reviewed and refined by a human analyst before going anywhere near a client or lender, so it needs to be a strong, honest first draft, not a polished final document.
 
 Below is the analysis to work from:
 
@@ -120,10 +134,18 @@ Rules for how you write this:
 - Keep the whole brief tight, aim for around 500-700 words total.`;
 
         console.log("Running Step 3...");
-        const step3Output = await callModel(step3Prompt);
+        const output = await callModel(prompt);
+        res.json({ output });
+    } catch (error) {
+        console.error("Error in step 3:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
-        // Step 4
-        const step4Prompt = `Below is a draft deal brief. Review it critically against this checklist, then produce a revised final version.
+app.post('/api/step4', async (req, res) => {
+    try {
+        const { step3Output } = req.body;
+        const prompt = `Below is a draft deal brief. Review it critically against this checklist, then produce a revised final version.
 
 ${step3Output}
 
@@ -137,22 +159,94 @@ Checklist to apply:
 Output the final, revised deal brief only, five sections, same headers as before, ready to hand to a human reviewer.`;
 
         console.log("Running Step 4...");
-        const step4Output = await callModel(step4Prompt);
-
-        console.log("Chain complete.");
-        res.json({
-            step1: step1Output,
-            step2: step2Output,
-            step3: step3Output,
-            step4: step4Output
-        });
-
+        const output = await callModel(prompt);
+        res.json({ output });
     } catch (error) {
-        console.error("Error generating brief:", error);
+        console.error("Error in step 4:", error);
         res.status(500).json({ error: error.message });
     }
 });
 
+app.post('/api/generate-pdf', async (req, res) => {
+    try {
+        const { markdown, companyName } = req.body;
+        const fetch = (await import('node-fetch')).default;
+
+        // Convert markdown to simple LaTeX
+        let latex = `\\documentclass[12pt]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{geometry}
+\\geometry{a4paper, margin=1in}
+\\usepackage{hyperref}
+\\usepackage{parskip}
+
+\\title{Deal Brief: ${companyName}}
+\\author{Fuse Capital Group}
+\\date{\\today}
+
+\\begin{document}
+
+\\maketitle
+
+`;
+        
+        // Very basic markdown to latex converter for headings, bold, lists
+        let body = markdown
+            .replace(/^## (.*$)/gim, '\\section*{$1}')
+            .replace(/^# (.*$)/gim, '\\section*{$1}')
+            .replace(/\*\*(.*?)\*\*/g, '\\textbf{$1}')
+            .replace(/\*(.*?)\*/g, '\\textit{$1}')
+            .replace(/&/g, '\\&')
+            .replace(/%/g, '\\%')
+            .replace(/\$/g, '\\$')
+            .replace(/#/g, '\\#')
+            .replace(/_/g, '\\_')
+            .replace(/{/g, '\\{')
+            .replace(/}/g, '\\}');
+
+        // Handle simple itemized lists
+        const lines = body.split('\\n');
+        let inList = false;
+        let parsedLines = [];
+        
+        for (let line of lines) {
+            line = line.trim();
+            if (line.startsWith('- ')) {
+                if (!inList) {
+                    parsedLines.push('\\begin{itemize}');
+                    inList = true;
+                }
+                parsedLines.push(`  \\item ${line.substring(2)}`);
+            } else {
+                if (inList) {
+                    parsedLines.push('\\end{itemize}');
+                    inList = false;
+                }
+                parsedLines.push(line);
+            }
+        }
+        if (inList) parsedLines.push('\\end{itemize}');
+
+        latex += parsedLines.join('\\n\\n') + '\\n\\end{document}';
+
+        // Fetch PDF from latexonline.cc
+        const response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(latex));
+        if (!response.ok) {
+            throw new Error(`LaTeX compilation failed: ${response.statusText}`);
+        }
+
+        const buffer = await response.buffer();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', \`attachment; filename="\${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf"\`);
+        res.send(buffer);
+        
+    } catch (error) {
+        console.error("PDF generation error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+    console.log(\`Server listening on port \${PORT}\`);
 });

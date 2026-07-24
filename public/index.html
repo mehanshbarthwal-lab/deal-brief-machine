@@ -21,37 +21,54 @@
                         serif: ['"Instrument Serif"', 'serif'],
                     },
                     colors: {
-                        brand: '#1B133C',
-                        accent: '#F97316'
+                        brand: '#0F0920', // Darker for SaaS look
+                        accent: '#F97316',
+                        glass: 'rgba(255,255,255,0.05)',
+                        glassBorder: 'rgba(255,255,255,0.1)'
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                     }
                 }
             }
         }
     </script>
-    
-    <!-- html2pdf.js for PDF export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; color: #1B133C; background-color: #f8fafc; }
-        /* Custom scrollbar for form area if needed */
+        body { font-family: 'Inter', sans-serif; color: #E2E8F0; background-color: #0F0920; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
         
         .spinner {
-            border: 3px solid rgba(27, 19, 60, 0.1);
-            width: 24px;
-            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            border-left-color: #1B133C;
+            border-left-color: #fff;
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .glowing-box {
+            box-shadow: 0 0 40px rgba(249, 115, 22, 0.15);
+        }
+
+        /* Input styling for dark mode */
+        input, textarea {
+            background-color: rgba(255,255,255,0.03) !important;
+            color: #f8fafc !important;
+            border-color: rgba(255,255,255,0.1) !important;
+        }
+        input:focus, textarea:focus {
+            background-color: rgba(255,255,255,0.08) !important;
+            border-color: #F97316 !important;
+            box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+        }
     </style>
 </head>
-<body class="antialiased selection:bg-brand/20">
+<body class="antialiased selection:bg-accent/30 text-slate-200">
 
     <!-- HERO SECTION -->
     <section class="relative h-screen w-full overflow-hidden flex flex-col">
@@ -59,60 +76,54 @@
         <video 
             src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260714_113715_c7e0daa0-8bdd-4486-a2da-040901f8f0ea.mp4" 
             autoPlay muted loop playsInline 
-            class="absolute inset-0 z-0 w-full h-[130%] object-cover object-top"
+            class="absolute inset-0 z-0 w-full h-[130%] object-cover object-top opacity-60"
         ></video>
+        <div class="absolute inset-0 bg-gradient-to-b from-brand/80 via-brand/50 to-brand z-0"></div>
         
         <!-- Content Overlay -->
         <div class="relative z-10 flex flex-col h-full items-center px-4">
             
             <!-- Navigation -->
             <nav class="w-full max-w-5xl mx-auto pt-4 md:pt-6 flex justify-center">
-                <div class="flex items-center gap-8 bg-white/70 backdrop-blur-md rounded-xl px-4 md:px-6 py-3 shadow-sm border border-white/50">
+                <div class="flex items-center gap-8 bg-black/40 backdrop-blur-xl rounded-xl px-6 py-3 shadow-sm border border-white/10">
                     <div class="flex items-center gap-2">
-                        <!-- Custom SVG Logo -->
-                        <svg viewBox="0 0 256 256" class="w-6 h-6 fill-brand">
+                        <svg viewBox="0 0 256 256" class="w-6 h-6 fill-white">
                             <path d="M 256 256 L 128 256 L 0 128 L 128 128 Z" />
                             <path d="M 256 128 L 128 128 L 0 0 L 128 0 Z" />
                         </svg>
-                        <span class="font-semibold text-brand tracking-tight">Fuse Capital</span>
+                        <span class="font-semibold text-white tracking-tight">Fuse Capital</span>
                     </div>
                     <div class="hidden sm:flex items-center gap-6">
-                        <a href="#machine" class="text-sm font-medium text-brand/80 hover:text-brand transition-colors">Brief Machine</a>
-                        <a href="#" class="text-sm font-medium text-brand/80 hover:text-brand transition-colors">Methodology</a>
-                        <a href="#" class="text-sm font-medium text-brand/80 hover:text-brand transition-colors">Security</a>
+                        <a href="#machine" class="text-sm font-medium text-white/70 hover:text-white transition-colors">Launch Agents</a>
                     </div>
                 </div>
             </nav>
 
             <!-- Hero Content -->
             <div class="mt-auto mb-auto text-center flex flex-col items-center">
-                <!-- Badge -->
-                <div class="mb-6 inline-flex items-center gap-2 rounded-xl border border-brand/10 bg-white/70 backdrop-blur-sm px-4 py-2 text-sm font-medium shadow-sm">
+                <div class="mb-6 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 backdrop-blur-md px-4 py-2 text-sm font-medium shadow-sm">
                     <div class="bg-accent rounded w-5 h-5 flex items-center justify-center">
                         <span class="text-white font-bold text-xs">F</span>
                     </div>
-                    <span class="text-brand">Fuse Capital Group</span>
+                    <span class="text-slate-200">AI Workflow Agents</span>
                 </div>
 
-                <!-- Heading -->
-                <h1 class="font-serif text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-[0.95] tracking-tight text-brand max-w-4xl">
-                    Automate your deal<br/>
-                    <span class="italic text-brand/90">analysis workflow</span>
+                <h1 class="font-serif text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-[0.95] tracking-tight text-white max-w-4xl">
+                    Deploy AI Agents to<br/>
+                    <span class="italic text-slate-300">analyze your deals</span>
                 </h1>
 
-                <!-- Subtitle -->
-                <p class="mt-5 sm:mt-6 max-w-2xl text-sm sm:text-base md:text-lg leading-relaxed text-brand/70 font-medium">
-                    Eliminate tedious manual drafting. The Deal Brief Machine transforms raw company data into rigorous, 5-section financing briefs in seconds using a specialized 4-step AI pipeline.
+                <p class="mt-5 sm:mt-6 max-w-2xl text-sm sm:text-base md:text-lg leading-relaxed text-slate-400 font-medium">
+                    The Deal Brief Machine is a 4-step autonomous pipeline. It extracts facts, reasons through credit implications, drafts a brief, and tightens the prose into a formal document.
                 </p>
 
-                <!-- CTA -->
-                <a href="#machine" class="mt-7 sm:mt-8 rounded-xl bg-white px-6 sm:px-8 py-3 sm:py-3.5 text-sm font-semibold text-brand shadow-[0px_4px_12px_rgba(0,0,0,0.15)] hover:shadow-[0px_6px_16px_rgba(0,0,0,0.2)] transition-all duration-300 transform hover:-translate-y-0.5">
-                    Start Deal Brief &rarr;
+                <a href="#machine" class="mt-7 sm:mt-8 rounded-xl bg-accent px-6 sm:px-8 py-3 sm:py-3.5 text-sm font-semibold text-white shadow-[0px_4px_24px_rgba(249,115,22,0.4)] hover:shadow-[0px_6px_32px_rgba(249,115,22,0.6)] transition-all duration-300 transform hover:-translate-y-0.5">
+                    Initialize Pipeline &rarr;
                 </a>
             </div>
             
             <div class="pb-8 animate-bounce opacity-50">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                 </svg>
             </div>
@@ -120,124 +131,169 @@
     </section>
 
     <!-- MACHINE SECTION -->
-    <section id="machine" class="min-h-screen py-24 px-4 sm:px-6 relative z-20 bg-[#f8fafc]">
+    <section id="machine" class="min-h-screen py-24 px-4 sm:px-6 relative z-20 bg-brand">
         <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
             
             <!-- INPUT FORM (Left Col) -->
             <div class="lg:col-span-4 flex flex-col gap-6">
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
-                    <h2 class="font-serif text-3xl text-brand mb-2">Deal Inputs</h2>
-                    <p class="text-sm text-brand/60 mb-8">Enter the raw company facts below. Do not analyze, the machine handles the reasoning.</p>
+                <div class="bg-glass backdrop-blur-xl rounded-2xl shadow-sm border border-glassBorder p-6 sm:p-8 glowing-box">
+                    <h2 class="font-serif text-3xl text-white mb-2">Deal Inputs</h2>
+                    <p class="text-sm text-slate-400 mb-8">Raw facts only. The multi-agent workflow handles the reasoning.</p>
                     
                     <form id="dealForm" class="flex flex-col gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-brand/80 uppercase tracking-wider mb-1.5">Company</label>
-                            <input type="text" name="company" value="NovaBuild Technologies, a UK-based proptech SaaS business" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-brand">
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Company</label>
+                            <input type="text" name="company" value="NovaBuild Technologies, a UK-based proptech SaaS business" required class="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-brand/80 uppercase tracking-wider mb-1.5">What they do</label>
-                            <textarea name="what_they_do" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm h-20 resize-y focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-brand">AI-driven project management platform for construction firms</textarea>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">What they do</label>
+                            <textarea name="what_they_do" required class="w-full rounded-lg px-4 py-2.5 text-sm h-20 resize-y outline-none transition-all">AI-driven project management platform for construction firms</textarea>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-brand/80 uppercase tracking-wider mb-1.5">Financials</label>
-                            <textarea name="financials" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm h-20 resize-y focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-brand">£8.5m ARR, growing 65% YoY, not yet profitable (EBITDA -£1.2m)</textarea>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Financials</label>
+                            <textarea name="financials" required class="w-full rounded-lg px-4 py-2.5 text-sm h-20 resize-y outline-none transition-all">£8.5m ARR, growing 65% YoY, not yet profitable (EBITDA -£1.2m)</textarea>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-brand/80 uppercase tracking-wider mb-1.5">Deal Type</label>
-                            <textarea name="deal_type" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm h-16 resize-y focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-brand">Growth financing to accelerate expansion into the US market</textarea>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Deal Type</label>
+                            <textarea name="deal_type" required class="w-full rounded-lg px-4 py-2.5 text-sm h-16 resize-y outline-none transition-all">Growth financing to accelerate expansion into the US market</textarea>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-brand/80 uppercase tracking-wider mb-1.5">Deal Size</label>
-                            <input type="text" name="deal_size" value="£6m" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-brand">
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Deal Size</label>
+                            <input type="text" name="deal_size" value="£6m" required class="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-brand/80 uppercase tracking-wider mb-1.5">Preferred Structure</label>
-                            <textarea name="preferred_structure" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm h-16 resize-y focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-brand">Senior secured debt with a 4-year tenor</textarea>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Preferred Structure</label>
+                            <textarea name="preferred_structure" required class="w-full rounded-lg px-4 py-2.5 text-sm h-16 resize-y outline-none transition-all">Senior secured debt with a 4-year tenor</textarea>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-brand/80 uppercase tracking-wider mb-1.5">Additional Context</label>
-                            <textarea name="additional_context" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm h-20 resize-y focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors text-brand">Founder-led, 3 institutional investors on the cap table, strong NPS</textarea>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Additional Context</label>
+                            <textarea name="additional_context" required class="w-full rounded-lg px-4 py-2.5 text-sm h-20 resize-y outline-none transition-all">Founder-led, 3 institutional investors on the cap table, strong NPS</textarea>
                         </div>
                         
-                        <button type="submit" id="submitBtn" class="mt-4 w-full bg-brand text-white font-semibold rounded-lg py-3 hover:bg-brand/90 transition-colors shadow-md flex items-center justify-center gap-2">
+                        <button type="submit" id="submitBtn" class="mt-4 w-full bg-accent text-white font-semibold rounded-lg py-3 hover:bg-orange-600 transition-colors shadow-[0px_4px_16px_rgba(249,115,22,0.3)] flex items-center justify-center gap-2">
                             <span>Execute Pipeline</span>
-                            <div id="btnSpinner" class="spinner hidden border-white/30 border-left-white"></div>
+                            <div id="btnSpinner" class="spinner hidden"></div>
                         </button>
                     </form>
                 </div>
             </div>
 
             <!-- RESULTS (Right Col) -->
-            <div class="lg:col-span-8">
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                
+                <!-- Progress Tracker UI (Hidden initially) -->
+                <div id="progressTracker" class="hidden bg-glass backdrop-blur-xl rounded-2xl border border-glassBorder p-6 shadow-sm">
+                    <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4 flex items-center justify-between">
+                        <span>Agent Pipeline Status</span>
+                        <span id="progressPercent" class="text-accent">0%</span>
+                    </h3>
+                    
+                    <div class="relative w-full h-2 bg-black/50 rounded-full overflow-hidden mb-6">
+                        <div id="progressBar" class="absolute left-0 top-0 h-full bg-accent transition-all duration-500 ease-out" style="width: 0%"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="step-card opacity-50 transition-opacity duration-300" id="uiStep1">
+                            <div class="text-xs text-slate-400 mb-1">Agent 1</div>
+                            <div class="font-medium text-sm text-white flex items-center gap-2">
+                                <div class="step-indicator w-2 h-2 rounded-full bg-slate-500"></div>
+                                Structuring
+                            </div>
+                        </div>
+                        <div class="step-card opacity-50 transition-opacity duration-300" id="uiStep2">
+                            <div class="text-xs text-slate-400 mb-1">Agent 2</div>
+                            <div class="font-medium text-sm text-white flex items-center gap-2">
+                                <div class="step-indicator w-2 h-2 rounded-full bg-slate-500"></div>
+                                Analysis
+                            </div>
+                        </div>
+                        <div class="step-card opacity-50 transition-opacity duration-300" id="uiStep3">
+                            <div class="text-xs text-slate-400 mb-1">Agent 3</div>
+                            <div class="font-medium text-sm text-white flex items-center gap-2">
+                                <div class="step-indicator w-2 h-2 rounded-full bg-slate-500"></div>
+                                Drafting
+                            </div>
+                        </div>
+                        <div class="step-card opacity-50 transition-opacity duration-300" id="uiStep4">
+                            <div class="text-xs text-slate-400 mb-1">Agent 4</div>
+                            <div class="font-medium text-sm text-white flex items-center gap-2">
+                                <div class="step-indicator w-2 h-2 rounded-full bg-slate-500"></div>
+                                Polish
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Placeholder State -->
-                <div id="placeholderState" class="h-full min-h-[600px] flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-200 border-dashed p-12 text-center">
-                    <svg class="w-16 h-16 text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                    <h3 class="font-serif text-2xl text-slate-400 mb-2">Awaiting Inputs</h3>
-                    <p class="text-slate-400 text-sm max-w-sm">Submit the form to generate the final tightened deal brief and view the intermediate analytical steps.</p>
+                <div id="placeholderState" class="h-full min-h-[500px] flex flex-col items-center justify-center bg-glass backdrop-blur-xl rounded-2xl border border-glassBorder border-dashed p-12 text-center">
+                    <svg class="w-16 h-16 text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    <h3 class="font-serif text-2xl text-slate-400 mb-2">Systems Standby</h3>
+                    <p class="text-slate-500 text-sm max-w-sm">Submit the form to initialize the 4-step autonomous pipeline.</p>
                 </div>
 
                 <!-- Results State (Hidden initially) -->
                 <div id="resultsState" class="hidden flex-col gap-6">
+                    
                     <!-- Final Brief Header & Download -->
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                         <div>
-                            <h2 class="font-serif text-3xl text-brand">Final Deal Brief</h2>
-                            <p class="text-sm text-brand/60">Step 4 output — scrubbed, tightened, and ready for review.</p>
+                            <h2 class="font-serif text-3xl text-slate-900">Final Deal Brief</h2>
+                            <p class="text-sm text-slate-500">Pipeline complete. Output tightened and formatted.</p>
                         </div>
-                        <button id="downloadPdfBtn" class="flex items-center gap-2 bg-white border border-slate-200 hover:border-brand/30 hover:bg-slate-50 text-brand text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition-all">
+                        <button id="downloadPdfBtn" class="flex items-center gap-2 bg-accent hover:bg-orange-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-[0px_4px_16px_rgba(249,115,22,0.3)] transition-all">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            Download PDF
+                            <span id="pdfBtnText">Download PDF (LaTeX)</span>
                         </button>
                     </div>
 
-                    <!-- Final Brief Content (This is what gets downloaded) -->
+                    <!-- Final Brief Content Preview -->
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div id="pdfContent" class="p-8 sm:p-12 prose prose-slate max-w-none prose-headings:font-serif prose-headings:text-brand prose-h2:text-2xl prose-h2:border-b prose-h2:pb-2 prose-h2:border-slate-100 prose-p:text-brand/80">
+                        <div id="pdfContent" class="p-8 sm:p-12 prose prose-slate max-w-none prose-headings:font-serif prose-headings:text-slate-900 prose-h2:text-2xl prose-h2:border-b prose-h2:pb-2 prose-h2:border-slate-100 prose-p:text-slate-700">
                             <!-- Injected by JS -->
                         </div>
                     </div>
 
                     <!-- Intermediate Traceability -->
                     <div class="mt-4">
-                        <h3 class="font-serif text-2xl text-brand mb-4">Pipeline Traceability</h3>
+                        <h3 class="font-serif text-2xl text-white mb-4">Agent Traceability Logs</h3>
                         <div class="flex flex-col gap-3">
-                            <details class="group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                <summary class="flex justify-between items-center font-medium cursor-pointer list-none p-5 text-brand hover:bg-slate-50 transition-colors">
+                            <details class="group bg-black/40 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden">
+                                <summary class="flex justify-between items-center font-medium cursor-pointer list-none p-5 text-white hover:bg-white/5 transition-colors">
                                     <span class="font-semibold flex items-center gap-3">
-                                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-brand/10 text-brand text-xs">1</span>
-                                        Extraction & Structuring
+                                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-accent/20 text-accent text-xs">1</span>
+                                        Data Extraction & Structuring
                                     </span>
-                                    <span class="transition group-open:rotate-180">
+                                    <span class="transition group-open:rotate-180 text-slate-400">
                                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                     </span>
                                 </summary>
-                                <div class="text-sm text-brand/80 p-5 pt-0 border-t border-slate-100 whitespace-pre-wrap font-mono leading-relaxed" id="outStep1"></div>
+                                <div class="text-sm text-slate-300 p-5 pt-0 border-t border-white/5 whitespace-pre-wrap font-mono leading-relaxed" id="outStep1"></div>
                             </details>
                             
-                            <details class="group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                <summary class="flex justify-between items-center font-medium cursor-pointer list-none p-5 text-brand hover:bg-slate-50 transition-colors">
+                            <details class="group bg-black/40 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden">
+                                <summary class="flex justify-between items-center font-medium cursor-pointer list-none p-5 text-white hover:bg-white/5 transition-colors">
                                     <span class="font-semibold flex items-center gap-3">
-                                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-brand/10 text-brand text-xs">2</span>
-                                        Analysis Pass
+                                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-accent/20 text-accent text-xs">2</span>
+                                        Credit Analysis Pass
                                     </span>
-                                    <span class="transition group-open:rotate-180">
+                                    <span class="transition group-open:rotate-180 text-slate-400">
                                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                     </span>
                                 </summary>
-                                <div class="text-sm text-brand/80 p-5 pt-0 border-t border-slate-100 whitespace-pre-wrap font-mono leading-relaxed" id="outStep2"></div>
+                                <div class="text-sm text-slate-300 p-5 pt-0 border-t border-white/5 whitespace-pre-wrap font-mono leading-relaxed" id="outStep2"></div>
                             </details>
 
-                            <details class="group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                <summary class="flex justify-between items-center font-medium cursor-pointer list-none p-5 text-brand hover:bg-slate-50 transition-colors">
+                            <details class="group bg-black/40 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden">
+                                <summary class="flex justify-between items-center font-medium cursor-pointer list-none p-5 text-white hover:bg-white/5 transition-colors">
                                     <span class="font-semibold flex items-center gap-3">
-                                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-brand/10 text-brand text-xs">3</span>
-                                        Initial Draft
+                                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-accent/20 text-accent text-xs">3</span>
+                                        Initial Draft Generation
                                     </span>
-                                    <span class="transition group-open:rotate-180">
+                                    <span class="transition group-open:rotate-180 text-slate-400">
                                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                     </span>
                                 </summary>
-                                <div class="text-sm text-brand/80 p-5 pt-0 border-t border-slate-100 whitespace-pre-wrap font-mono leading-relaxed" id="outStep3"></div>
+                                <div class="text-sm text-slate-300 p-5 pt-0 border-t border-white/5 whitespace-pre-wrap font-mono leading-relaxed" id="outStep3"></div>
                             </details>
                         </div>
                     </div>
@@ -247,102 +303,171 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-brand py-8 text-center text-white/50 text-sm">
-        <p>&copy; 2026 Fuse Capital Group. Confidential Deal Brief Machine.</p>
+    <footer class="bg-[#080512] py-8 text-center text-white/30 text-sm border-t border-white/5">
+        <p>&copy; 2026 Fuse Capital Group. Deal Brief Machine (AI Workflow).</p>
     </footer>
 
     <script>
-        // Form Submission Logic
+        let finalMarkdownOutput = '';
+
+        function updateProgress(step, percent) {
+            document.getElementById('progressPercent').textContent = percent + '%';
+            document.getElementById('progressBar').style.width = percent + '%';
+            
+            // Reset all
+            for(let i=1; i<=4; i++) {
+                const ui = document.getElementById('uiStep' + i);
+                const dot = ui.querySelector('.step-indicator');
+                
+                if (i < step) {
+                    ui.classList.remove('opacity-50', 'animate-pulse');
+                    ui.classList.add('opacity-100');
+                    dot.classList.replace('bg-slate-500', 'bg-accent');
+                    dot.classList.replace('bg-white', 'bg-accent');
+                    dot.classList.remove('shadow-[0_0_8px_#fff]');
+                } else if (i === step) {
+                    ui.classList.remove('opacity-50');
+                    ui.classList.add('opacity-100', 'animate-pulse');
+                    dot.classList.replace('bg-slate-500', 'bg-white');
+                    dot.classList.replace('bg-accent', 'bg-white');
+                    dot.classList.add('shadow-[0_0_8px_#fff]');
+                } else {
+                    ui.classList.remove('opacity-100', 'animate-pulse');
+                    ui.classList.add('opacity-50');
+                    dot.classList.remove('bg-white', 'bg-accent', 'shadow-[0_0_8px_#fff]');
+                    dot.classList.add('bg-slate-500');
+                }
+            }
+        }
+
         document.getElementById('dealForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const submitBtn = document.getElementById('submitBtn');
             const btnText = submitBtn.querySelector('span');
             const btnSpinner = document.getElementById('btnSpinner');
+            
             const placeholderState = document.getElementById('placeholderState');
             const resultsState = document.getElementById('resultsState');
+            const progressTracker = document.getElementById('progressTracker');
             
             submitBtn.disabled = true;
             btnText.textContent = 'Processing...';
             btnSpinner.classList.remove('hidden');
             
-            // If running again, hide old results
             resultsState.classList.add('hidden');
-            placeholderState.classList.remove('hidden');
+            placeholderState.classList.add('hidden');
+            progressTracker.classList.remove('hidden');
 
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
 
             try {
-                const response = await fetch('/api/generate-brief', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.error || 'Unknown error occurred');
+                // Scroll to tracker
+                if (window.innerWidth < 1024) {
+                    progressTracker.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
 
-                const result = await response.json();
+                // STEP 1
+                updateProgress(1, 15);
+                let res = await fetch('/api/step1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                if (!res.ok) throw new Error("Step 1 failed");
+                let json = await res.json();
+                const step1Output = json.output;
+                document.getElementById('outStep1').textContent = step1Output;
+
+                // STEP 2
+                updateProgress(2, 40);
+                res = await fetch('/api/step2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step1Output }) });
+                if (!res.ok) throw new Error("Step 2 failed");
+                json = await res.json();
+                const step2Output = json.output;
+                document.getElementById('outStep2').textContent = step2Output;
+
+                // STEP 3
+                updateProgress(3, 65);
+                res = await fetch('/api/step3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step2Output }) });
+                if (!res.ok) throw new Error("Step 3 failed");
+                json = await res.json();
+                const step3Output = json.output;
+                document.getElementById('outStep3').textContent = step3Output;
+
+                // STEP 4
+                updateProgress(4, 90);
+                res = await fetch('/api/step4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step3Output }) });
+                if (!res.ok) throw new Error("Step 4 failed");
+                json = await res.json();
+                const step4Output = json.output;
                 
-                document.getElementById('outStep1').textContent = result.step1;
-                document.getElementById('outStep2').textContent = result.step2;
-                document.getElementById('outStep3').textContent = result.step3;
+                finalMarkdownOutput = step4Output;
+                document.getElementById('pdfContent').innerHTML = parseMarkdownToHtml(step4Output);
+
+                updateProgress(5, 100); // 5 means all done
                 
-                // Parse markdown-ish step 4 to HTML for the PDF view
-                const step4Html = parseMarkdownToHtml(result.step4);
-                document.getElementById('pdfContent').innerHTML = step4Html;
-                
-                placeholderState.classList.add('hidden');
                 resultsState.classList.remove('hidden');
                 resultsState.classList.add('flex');
                 
-                // Scroll to results on mobile/desktop naturally
-                if (window.innerWidth < 1024) {
-                    resultsState.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
             } catch (error) {
-                alert('Error generating brief: ' + error.message);
+                alert('Pipeline Error: ' + error.message);
+                placeholderState.classList.remove('hidden');
+                progressTracker.classList.add('hidden');
             } finally {
                 submitBtn.disabled = false;
                 btnText.textContent = 'Execute Pipeline';
                 btnSpinner.classList.add('hidden');
+                
+                // Stop pulse on last step
+                for(let i=1; i<=4; i++) {
+                    document.getElementById('uiStep'+i).classList.remove('animate-pulse');
+                }
             }
         });
 
-        // Simple Markdown to HTML parser for headers and paragraphs
         function parseMarkdownToHtml(md) {
             let html = md.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             html = html.replace(/\n\n/g, '</p><p>');
             return '<p>' + html + '</p>';
         }
 
-        // PDF Download Logic
-        document.getElementById('downloadPdfBtn').addEventListener('click', () => {
-            const element = document.getElementById('pdfContent');
-            const companyName = document.querySelector('input[name="company"]').value.split(',')[0].trim() || 'Deal';
-            const opt = {
-                margin:       1,
-                filename:     `${companyName}_Deal_Brief.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-            };
+        // Backend PDF Generation (LaTeX)
+        document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('downloadPdfBtn');
+            const btnText = document.getElementById('pdfBtnText');
+            const originalText = btnText.textContent;
             
-            // Add a temporary title for the PDF
-            const tempTitle = document.createElement('h1');
-            tempTitle.textContent = `${companyName} - Deal Brief`;
-            tempTitle.style.fontFamily = '"Instrument Serif", serif';
-            tempTitle.style.color = '#1B133C';
-            tempTitle.style.marginBottom = '20px';
-            element.insertBefore(tempTitle, element.firstChild);
+            try {
+                btn.disabled = true;
+                btnText.textContent = 'Compiling LaTeX...';
+                
+                const companyName = document.querySelector('input[name="company"]').value.split(',')[0].trim() || 'Deal';
+                
+                const response = await fetch('/api/generate-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markdown: finalMarkdownOutput, companyName })
+                });
 
-            html2pdf().set(opt).from(element).save().then(() => {
-                // Remove the temporary title after generating PDF
-                element.removeChild(tempTitle);
-            });
+                if (!response.ok) {
+                    throw new Error('Failed to generate PDF');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = \`\${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf\`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                
+            } catch(e) {
+                alert("Error generating PDF: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = originalText;
+            }
         });
     </script>
 </body>
