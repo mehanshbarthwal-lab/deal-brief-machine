@@ -259,7 +259,7 @@ app.post('/api/generate-pdf', async (req, res) => {
 
         const buffer = await response.buffer();
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', \`attachment; filename="\${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf"\`);
+        res.setHeader('Content-Disposition', `attachment; filename="${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf"`);
         res.send(buffer);
         
     } catch (error) {
@@ -270,5 +270,5 @@ app.post('/api/generate-pdf', async (req, res) => {
 
 
 app.listen(PORT, () => {
-    console.log(\`Server listening on port \${PORT}\`);
+    console.log(`Server listening on port ${PORT}`);
 });
