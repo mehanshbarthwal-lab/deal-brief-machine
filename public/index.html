@@ -56,15 +56,19 @@
         }
 
         /* Input styling for dark mode */
-        input, textarea {
+        input, textarea, select {
             background-color: rgba(255,255,255,0.03) !important;
             color: #f8fafc !important;
             border-color: rgba(255,255,255,0.1) !important;
         }
-        input:focus, textarea:focus {
+        input:focus, textarea:focus, select:focus {
             background-color: rgba(255,255,255,0.08) !important;
             border-color: #F97316 !important;
             box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+        }
+        select option {
+            background-color: #0F0920;
+            color: #f8fafc;
         }
     </style>
 </head>
