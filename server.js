@@ -310,7 +310,82 @@ app.post('/api/generate-pdf', async (req, res) => {
         body = body.replace(/\\/g, '\\textbackslash{}')
                    .replace(/&/g, '\\&')
                    .replace(/%/g, '\\%')
-                   .replace(/\\\$/g, '\\$')
+                   .replace(/\$/g, '\\
+
+        body = body
+            .replace(/^### (.*$)/gim, '\\vspace{0.8em}\\textbf{\\large $1}\\par\\vspace{0.3em}')
+            .replace(/^## (.*$)/gim, '\\vspace{1.5em}\\textcolor{blue}{\\textbf{\\Large $1}}\\par\\vspace{0.5em}')
+            .replace(/^# (.*$)/gim, '\\vspace{1.5em}\\textcolor{blue}{\\textbf{\\huge $1}}\\par\\vspace{1em}')
+            .replace(/\*\*(.*?)\*\*/g, '\\textbf{$1}')
+            .replace(/\*(.*?)\*/g, '\\textit{$1}');
+
+        const lines = body.split('\n');
+        let inList = false;
+        let parsedLines = [];
+        
+        for (let line of lines) {
+            line = line.trim();
+            if (line.startsWith('- ')) {
+                if (!inList) {
+                    parsedLines.push('\\vspace{0.3em}\\begin{itemize}\\setlength{\\itemsep}{0.5em}');
+                    inList = true;
+                }
+                parsedLines.push(`  \\item ${line.substring(2)}`);
+            } else {
+                if (inList) {
+                    parsedLines.push('\\end{itemize}\\vspace{0.3em}');
+                    inList = false;
+                }
+                if (line.length > 0) {
+                    parsedLines.push(line + '\\\\ \\vspace{0.3em}'); // Spacing after paragraphs
+                }
+            }
+        }
+        if (inList) parsedLines.push('\\end{itemize}\\vspace{0.3em}');
+
+        latex += parsedLines.join('\n') + '\n\\end{frame}\n\\end{document}';
+
+        // Use texlive.net API for reliable LaTeX compilation
+        const formattedLatex = latex.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+        const form = new FormData();
+        form.append('filecontents[]', new Blob([formattedLatex], { type: 'text/plain' }), 'document.tex');
+        form.append('filename[]', 'document.tex');
+        form.append('engine', 'pdflatex');
+        form.append('return', 'pdf');
+
+        const response = await fetch('https://texlive.net/cgi-bin/latexcgi', {
+            method: 'POST',
+            body: form
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/plain')) {
+            const errText = await response.text();
+            throw new Error(`LaTeX Compilation Error:\n${errText}`);
+        }
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`PDF compilation failed: ${response.statusText} - ${errText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf"`);
+        res.send(buffer);
+        
+    } catch (error) {
+        console.error("PDF generation error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+});
+
+)
                    .replace(/#/g, '\\#')
                    .replace(/_/g, '\\_')
                    .replace(/{/g, '\\{')
