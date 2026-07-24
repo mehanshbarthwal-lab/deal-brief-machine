@@ -306,15 +306,7 @@ app.post('/api/generate-pdf', async (req, res) => {
         body = body.replace(/\\/g, '\\textbackslash{}')
                    .replace(/&/g, '\\&')
                    .replace(/%/g, '\\%')
-                   .replace(/\\\$([^]*?)\\\$/g, '$$1$')
-                   .replace(/\$/g, '\\    }
-});
-
-
-app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-});
-)
+                   .replace(/\\\$/g, '\\$')
                    .replace(/#/g, '\\#')
                    .replace(/_/g, '\\_')
                    .replace(/{/g, '\\{')
@@ -381,10 +373,8 @@ app.listen(PORT, () => {
         res.status(500).json({ error: error.message });
     }
 });
-    }
-});
-
 
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
 });
+
