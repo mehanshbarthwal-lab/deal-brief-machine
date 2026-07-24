@@ -114,6 +114,9 @@ app.post('/api/custom-prompt', async (req, res) => {
         ## Financing Requirement
         ## Suggested Debt Structure
         ## Initial Lender Considerations
+        ## References
+        
+        CRITICAL REQUIREMENT: You MUST include a "## References" section at the end of the brief. Any facts, data, or external knowledge used must be cited using proper APA format with clickable Markdown links. Use in-text APA citations throughout the brief.
         
         USER PROMPT: ${promptText}
         REFERENCE DOCUMENT TEXT: ${documentText ? documentText.substring(0, 15000) : 'None provided.'}`;
@@ -259,7 +262,7 @@ Checklist to apply:
 4. Is the language free of filler phrases, AI-sounding hedges, and inflated words ("robust," "seamless," "leverage," "landscape," "unlock")? Fix any that slipped through.
 5. Is the tone honest about risk and open questions, not just confidently positive?
 
-Output the final, revised deal brief only, five sections, same headers as before, ready to hand to a human reviewer.`;
+CRITICAL REQUIREMENT: Output the final, revised deal brief with exactly the five original sections, PLUS a new "## References" section at the end. Any facts, data, or external knowledge used must be cited using proper APA format with clickable Markdown links. Use in-text APA citations throughout the brief. Return only the Markdown text ready to hand to a human reviewer.`;
 
         console.log(`Running Step 4 with ${stepModel}...`);
         const { text, usedFallback, actualModel } = await callModel(prompt, stepModel);
@@ -346,24 +349,32 @@ app.post('/api/generate-pdf', async (req, res) => {
 
         latex += parsedLines.join('\n') + '\n\\end{frame}\n\\end{document}';
 
-        // Fix PDF POST Issue using FormData to avoid URL limits
+        // Use texlive.net API for reliable LaTeX compilation
+        const formattedLatex = latex.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
         const form = new FormData();
-        form.append('file', Buffer.from(latex), {
-            filename: 'document.tex',
-            contentType: 'application/x-tex',
-        });
+        form.append('filecontents[]', new Blob([formattedLatex], { type: 'text/plain' }), 'document.tex');
+        form.append('filename[]', 'document.tex');
+        form.append('engine', 'pdflatex');
+        form.append('return', 'pdf');
 
-        const response = await fetch('https://latexonline.cc/compile', {
+        const response = await fetch('https://texlive.net/cgi-bin/latexcgi', {
             method: 'POST',
             body: form
         });
+
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/plain')) {
+            const errText = await response.text();
+            throw new Error(`LaTeX Compilation Error:\n${errText}`);
+        }
 
         if (!response.ok) {
             const errText = await response.text();
             throw new Error(`PDF compilation failed: ${response.statusText} - ${errText}`);
         }
 
-        const buffer = await response.buffer();
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf"`);
         res.send(buffer);
