@@ -567,21 +567,16 @@
             document.getElementById('outStep3').textContent = '';
 
             const stopBtn = document.getElementById('stopBtn');
-            document.getElementById('finalBriefState').classList.remove('flex');
-            
-            document.getElementById('outStep1').textContent = 'Waiting for Agent...';
-            document.getElementById('outStep2').textContent = '';
-            document.getElementById('outStep3').textContent = '';
-
-            const stopBtn = document.getElementById('stopBtn');
             if(!isCustom) stopBtn.classList.remove('hidden');
             
             currentAbortController = new AbortController();
             const signal = currentAbortController.signal;
 
             try {
-                // Always scroll to the pipeline progress tracker when run starts
-                setTimeout(() => progressTracker.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                // Only auto-scroll on mobile where results are below the fold
+                if (window.innerWidth < 1024) {
+                    setTimeout(() => progressTracker.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                }
 
                 if (isCustom) {
                     updateProgress(2, 50); 
