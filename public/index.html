@@ -747,20 +747,22 @@
                     box-sizing: border-box;
                 ">
                     <style>
-                        #pdf-render-target h1 { font-size: 20pt; font-weight: bold; margin: 0 0 4px 0; text-align: left; }
-                        #pdf-render-target .subtitle { font-size: 10pt; color: #555; margin: 0 0 2px 0; font-style: italic; }
-                        #pdf-render-target .dateline { font-size: 10pt; color: #555; margin: 0 0 24px 0; }
-                        #pdf-render-target .divider { border: none; border-top: 2px solid #1a2a4a; margin: 0 0 28px 0; }
-                        #pdf-render-target h2 { font-size: 13pt; font-weight: bold; color: #1a2a4a; text-transform: uppercase; letter-spacing: 0.04em; margin: 28px 0 4px 0; padding-bottom: 4px; border-bottom: 1px solid #c0c8d8; }
-                        #pdf-render-target h3 { font-size: 11pt; font-weight: bold; color: #1a2a4a; margin: 16px 0 6px 0; }
-                        #pdf-render-target p { margin: 0 0 10px 0; text-align: justify; }
-                        #pdf-render-target ul { margin: 6px 0 10px 20px; padding: 0; }
-                        #pdf-render-target ol { margin: 6px 0 10px 20px; padding: 0; }
-                        #pdf-render-target li { margin: 3px 0; }
+                        #pdf-render-target h1 { font-size: 20pt; font-weight: bold; margin: 0 0 4px 0; text-align: left; page-break-after: avoid; }
+                        #pdf-render-target .subtitle { font-size: 10pt; color: #555; margin: 0 0 2px 0; font-style: italic; page-break-after: avoid; }
+                        #pdf-render-target .dateline { font-size: 10pt; color: #555; margin: 0 0 24px 0; page-break-after: avoid; }
+                        #pdf-render-target .divider { border: none; border-top: 2px solid #1a2a4a; margin: 0 0 28px 0; page-break-after: avoid; }
+                        #pdf-render-target h2 { font-size: 13pt; font-weight: bold; color: #1a2a4a; text-transform: uppercase; letter-spacing: 0.04em; margin: 28px 0 4px 0; padding-bottom: 4px; border-bottom: 1px solid #c0c8d8; page-break-after: avoid; page-break-inside: avoid; }
+                        #pdf-render-target h3 { font-size: 11pt; font-weight: bold; color: #1a2a4a; margin: 16px 0 6px 0; page-break-after: avoid; page-break-inside: avoid; }
+                        #pdf-render-target p { margin: 0 0 10px 0; text-align: justify; orphans: 3; widows: 3; page-break-inside: avoid; }
+                        #pdf-render-target ul { margin: 6px 0 10px 20px; padding: 0; page-break-inside: avoid; }
+                        #pdf-render-target ol { margin: 6px 0 10px 20px; padding: 0; page-break-inside: avoid; }
+                        #pdf-render-target li { margin: 3px 0; page-break-inside: avoid; }
                         #pdf-render-target a { color: #1a2a4a; }
-                        #pdf-render-target .refs-header { font-size: 11pt; font-weight: bold; color: #1a2a4a; text-transform: uppercase; letter-spacing: 0.04em; margin: 28px 0 4px 0; padding-bottom: 4px; border-bottom: 1px solid #c0c8d8; }
+                        #pdf-render-target .refs-header { font-size: 11pt; font-weight: bold; color: #1a2a4a; text-transform: uppercase; letter-spacing: 0.04em; margin: 28px 0 4px 0; padding-bottom: 4px; border-bottom: 1px solid #c0c8d8; page-break-after: avoid; page-break-inside: avoid; }
                         #pdf-render-target strong { font-weight: bold; }
                         #pdf-render-target em { font-style: italic; }
+                        /* Prevent sections from being split across pages */
+                        #pdf-render-target .pdf-section { page-break-inside: avoid; }
                     </style>
 
                     <!-- Title Block -->
@@ -784,8 +786,9 @@
                     margin: [15, 18, 15, 18],
                     filename: `${companyName.replace(/\s+/g,'_')}_Deal_Brief.pdf`,
                     image: { type: 'jpeg', quality: 0.99 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', windowWidth: 794 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: ['avoid-all', 'css'], before: '.pdf-page-break', avoid: ['h2', 'h3', '.refs-header', 'li', 'ul', 'ol', 'p'] }
                 };
 
                 await html2pdf().set(opt).from(target).save();
