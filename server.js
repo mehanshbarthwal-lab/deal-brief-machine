@@ -235,7 +235,8 @@ Rules for how you write this:
 - Do NOT structure any list or explanation in exactly three parallel items, vary your structure, some points deserve one sentence, others deserve a full paragraph.
 - Do NOT use rhetorical scene-setting or throat-clearing ("In today's fast-evolving market...", "As businesses increasingly look to..."). Start every section directly with substance.
 - Where there's a genuine tension or open question, say so plainly rather than glossing over it.
-- Keep the whole brief tight, aim for around 500-700 words total.`;
+- Keep the whole brief tight, aim for around 500-700 words total.
+- If you reference any external concept, industry benchmark, market norm, or general financial knowledge (e.g. "typical senior debt covenants", "SaaS revenue multiples", "UK FCA regulations"), note it inline with a short tag like [Source: industry standard] so the next reviewer knows what to verify.`;
 
         console.log(`Running Step 3 with ${stepModel}...`);
         const { text, usedFallback, actualModel } = await callModel(prompt, stepModel);
@@ -265,7 +266,24 @@ Checklist to apply:
 4. Is the language free of filler phrases, AI-sounding hedges, and inflated words ("robust," "seamless," "leverage," "landscape," "unlock")? Fix any that slipped through.
 5. Is the tone honest about risk and open questions, not just confidently positive?
 
-CRITICAL REQUIREMENT: Output the final, revised deal brief with exactly the five original sections, PLUS a new "## References" section at the end. Any facts, data, or external knowledge used must be cited using proper APA format with clickable Markdown links. Use in-text APA citations throughout the brief. Return only the Markdown text ready to hand to a human reviewer.`;
+OUTPUT STRUCTURE — you MUST follow this exactly, no exceptions:
+
+Output the five polished sections in order:
+## Company Overview
+## Deal Rationale
+## Financing Requirement
+## Suggested Debt Structure
+## Initial Lender Considerations
+
+Then ALWAYS end with a sixth section:
+## References
+
+Under ## References, list every piece of external knowledge, industry norm, benchmark, or general financial concept you used that did NOT come directly from the user's input. Format each reference as a numbered list in APA style with a markdown link where possible. For example:
+
+1. Bain & Company. (2023). *Global Private Credit Outlook*. [https://www.bain.com/insights/private-credit-report-2023](https://www.bain.com/insights/private-credit-report-2023)
+2. Bank of England. (2024). *Senior Secured Lending Guidelines*. [https://www.bankofengland.co.uk](https://www.bankofengland.co.uk)
+
+If you used general knowledge with no specific source, still list it as: "Industry standard practice — [brief description]." Do NOT omit the ## References section under any circumstances. Return only the Markdown text.`;
 
         console.log(`Running Step 4 with ${stepModel}...`);
         const { text, usedFallback, actualModel } = await callModel(prompt, stepModel);
