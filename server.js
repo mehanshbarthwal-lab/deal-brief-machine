@@ -294,6 +294,47 @@ If you used general knowledge with no specific source, still list it as: "Indust
     }
 });
 
+// AI-generated LaTeX source endpoint
+app.post('/api/generate-latex-source', async (req, res) => {
+    try {
+        const { markdown, companyName } = req.body;
+        const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        const prompt = `You are a LaTeX expert. Convert the following deal brief (written in Markdown) into a complete, compilable LaTeX document using the article class.
+
+REQUIREMENTS:
+1. Use \\documentclass[11pt,a4paper]{article} with these packages only: inputenc (utf8), fontenc (T1), geometry (margin=1in), xcolor, titlesec, helvet, setspace, hyperref (hidelinks), parskip
+2. Define \\definecolor{brandblue}{RGB}{20,40,80} and use it for section headers
+3. Format \\section headings with titlesec: uppercase, brandblue, bfseries, with a thin hrule below
+4. Use \\renewcommand{\\familydefault}{\\sfdefault} for a clean sans-serif body
+5. Title block: \\title{Deal Brief: ${companyName}}, \\author{Fuse Capital Group}, \\date{${today}}
+6. CRITICAL — escape ALL special characters properly: % → \\%, & → \\&, $ → \\$, # → \\#, _ → \\_, { → \\{, } → \\}, ~ → \\textasciitilde{}, ^ → \\textasciicircum{}, \\ → \\textbackslash{}
+7. Convert ## headers to \\section*{}, ### to \\subsection*{}
+8. Convert **bold** to \\textbf{}, *italic* to \\textit{}
+9. Convert - bullet lists to \\begin{itemize}...\\end{itemize} with \\item
+10. Convert numbered lists to \\begin{enumerate}...\\end{enumerate} with \\item
+11. Convert [text](url) links to \\href{url}{text}
+12. Keep \\setstretch{1.3} for professional line spacing
+13. Output ONLY the raw .tex file content — no markdown code fences, no explanation, no commentary
+
+MARKDOWN CONTENT TO CONVERT:
+${markdown}`;
+
+        const { text } = await callModel(prompt, 'google/gemma-4-31b-it:free');
+
+        // Strip any accidental markdown fences the model may have added
+        const cleaned = text
+            .replace(/^```(?:latex|tex)?\s*/i, '')
+            .replace(/\s*```\s*$/, '')
+            .trim();
+
+        res.json({ latexSource: cleaned });
+    } catch (error) {
+        console.error('LaTeX source generation error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/generate-pdf', async (req, res) => {
     try {
         const { markdown, companyName } = req.body;

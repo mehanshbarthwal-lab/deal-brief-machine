@@ -363,7 +363,12 @@
                             <h2 class="font-serif text-3xl text-white">Final Deal Brief</h2>
                             <p class="text-sm text-slate-400">Pipeline complete. Output tightened and formatted.</p>
                         </div>
-                        <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <!-- Format toggle -->
+                            <div class="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5 text-xs font-semibold">
+                                <button id="fmtPdf" onclick="setPdfFormat('pdf')" class="px-3 py-1.5 rounded-md transition-all bg-accent text-white shadow">PDF</button>
+                                <button id="fmtLatex" onclick="setPdfFormat('latex')" class="px-3 py-1.5 rounded-md transition-all text-slate-400 hover:text-white">LaTeX PDF</button>
+                            </div>
                             <button id="downloadPdfBtn" class="flex items-center gap-2 bg-accent hover:bg-orange-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-[0px_4px_16px_rgba(249,115,22,0.3)] transition-all">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                 <span id="pdfBtnText">Download PDF</span>
@@ -686,18 +691,95 @@
                 .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:#6ee7b7;text-decoration:underline">$1</a>');
         }
 
-        // Smart PDF: try LaTeX API first, silently fall back to html2pdf if it fails
+        // PDF format toggle state
+        let pdfFormat = 'pdf';
+        function setPdfFormat(fmt) {
+            pdfFormat = fmt;
+            const btnPdf   = document.getElementById('fmtPdf');
+            const btnLatex = document.getElementById('fmtLatex');
+            const active   = 'px-3 py-1.5 rounded-md transition-all bg-accent text-white shadow';
+            const inactive = 'px-3 py-1.5 rounded-md transition-all text-slate-400 hover:text-white';
+            if (fmt === 'pdf') {
+                btnPdf.className   = active;
+                btnLatex.className = inactive;
+                document.getElementById('pdfBtnText').textContent = 'Download PDF';
+            } else {
+                btnPdf.className   = inactive;
+                btnLatex.className = active;
+                document.getElementById('pdfBtnText').textContent = 'LaTeX PDF';
+            }
+        }
+
+        // Download handler — branches on selected format
         document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
             if (!finalMarkdownOutput) return;
+
             const btnText = document.getElementById('pdfBtnText');
             const originalText = btnText.textContent;
             const companyName = (document.getElementById('companyName') || {}).value || 'Company';
 
-            btnText.textContent = 'Generating PDF...';
+            btnText.textContent = 'Generating...';
             document.getElementById('downloadPdfBtn').disabled = true;
 
+            // ── LATEX PATH ──────────────────────────────────────────────────
+            if (pdfFormat === 'latex') {
+                try {
+                    btnText.textContent = 'AI writing LaTeX...';
+                    const res = await fetch('/api/generate-latex-source', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ markdown: finalMarkdownOutput, companyName })
+                    });
+                    if (!res.ok) throw new Error(await res.text());
+                    const { latexSource } = await res.json();
+
+                    // Try compiling via texlive.net
+                    try {
+                        btnText.textContent = 'Compiling LaTeX...';
+                        const FormDataObj = new FormData();
+                        const texBlob = new Blob([latexSource], { type: 'text/plain' });
+                        FormDataObj.append('filecontents[]', texBlob, 'document.tex');
+                        FormDataObj.append('filename[]', 'document.tex');
+                        FormDataObj.append('engine', 'pdflatex');
+                        FormDataObj.append('return', 'pdf');
+
+                        const compiled = await fetch('https://texlive.net/cgi-bin/latexcgi', {
+                            method: 'POST', body: FormDataObj
+                        });
+                        const ct = compiled.headers.get('content-type') || '';
+                        if (compiled.ok && ct.includes('pdf')) {
+                            const blob = await compiled.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url; a.download = `${companyName.replace(/\s+/g,'_')}_Deal_Brief.pdf`;
+                            document.body.appendChild(a); a.click(); a.remove();
+                            URL.revokeObjectURL(url);
+                            btnText.textContent = originalText;
+                            document.getElementById('downloadPdfBtn').disabled = false;
+                            return;
+                        }
+                    } catch(_) { /* compiler unavailable — fall through to .tex download */ }
+
+                    // Fallback: download the .tex source so user/colleague can compile it
+                    const texUrl = URL.createObjectURL(new Blob([latexSource], { type: 'text/plain' }));
+                    const a = document.createElement('a');
+                    a.href = texUrl; a.download = `${companyName.replace(/\s+/g,'_')}_Deal_Brief.tex`;
+                    document.body.appendChild(a); a.click(); a.remove();
+                    URL.revokeObjectURL(texUrl);
+                    showToast('Compiler unavailable — downloaded .tex source instead. Open it in Overleaf or any LaTeX editor to compile.', 'info');
+                } catch (err) {
+                    alert('LaTeX generation failed: ' + err.message);
+                } finally {
+                    btnText.textContent = originalText;
+                    document.getElementById('downloadPdfBtn').disabled = false;
+                }
+                return;
+            }
+
+            // ── HTML2PDF PATH ────────────────────────────────────────────────
             try {
                 if (typeof html2pdf === 'undefined') throw new Error('PDF library not loaded yet. Please wait a moment and try again.');
+
 
                 // Convert markdown to clean professional HTML (LaTeX article style)
                 function mdToLatexHtml(md) {
