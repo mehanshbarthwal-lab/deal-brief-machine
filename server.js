@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,7 +21,6 @@ if (!OPENROUTER_API_KEY) {
 }
 
 async function callModel(prompt, modelOverride) {
-    const fetch = (await import('node-fetch')).default;
     const actualModel = modelOverride || MODEL;
     
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -192,7 +192,6 @@ Output the final, revised deal brief only, five sections, same headers as before
 app.post('/api/generate-pdf', async (req, res) => {
     try {
         const { markdown, companyName } = req.body;
-        const fetch = (await import('node-fetch')).default;
 
         // Convert markdown to simple LaTeX
         let latex = `\\documentclass[12pt]{article}

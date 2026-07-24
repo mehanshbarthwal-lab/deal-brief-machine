@@ -384,7 +384,10 @@
                 // STEP 1
                 updateProgress(1, 15);
                 let res = await fetch('/api/step1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-                if (!res.ok) throw new Error("Step 1 failed");
+                if (!res.ok) {
+                    let errObj = await res.json().catch(()=>({}));
+                    throw new Error("Step 1 failed: " + (errObj.error || res.statusText));
+                }
                 let json = await res.json();
                 const step1Output = json.output;
                 document.getElementById('outStep1').textContent = step1Output;
@@ -392,7 +395,10 @@
                 // STEP 2
                 updateProgress(2, 40);
                 res = await fetch('/api/step2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step1Output, modelSelection: data.modelSelection }) });
-                if (!res.ok) throw new Error("Step 2 failed");
+                if (!res.ok) {
+                    let errObj = await res.json().catch(()=>({}));
+                    throw new Error("Step 2 failed: " + (errObj.error || res.statusText));
+                }
                 json = await res.json();
                 const step2Output = json.output;
                 document.getElementById('outStep2').textContent = step2Output;
@@ -400,7 +406,10 @@
                 // STEP 3
                 updateProgress(3, 65);
                 res = await fetch('/api/step3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step2Output, modelSelection: data.modelSelection }) });
-                if (!res.ok) throw new Error("Step 3 failed");
+                if (!res.ok) {
+                    let errObj = await res.json().catch(()=>({}));
+                    throw new Error("Step 3 failed: " + (errObj.error || res.statusText));
+                }
                 json = await res.json();
                 const step3Output = json.output;
                 document.getElementById('outStep3').textContent = step3Output;
@@ -408,7 +417,10 @@
                 // STEP 4
                 updateProgress(4, 90);
                 res = await fetch('/api/step4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step3Output, modelSelection: data.modelSelection }) });
-                if (!res.ok) throw new Error("Step 4 failed");
+                if (!res.ok) {
+                    let errObj = await res.json().catch(()=>({}));
+                    throw new Error("Step 4 failed: " + (errObj.error || res.statusText));
+                }
                 json = await res.json();
                 const step4Output = json.output;
                 
