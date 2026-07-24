@@ -86,13 +86,11 @@
 
     <!-- HERO SECTION -->
     <section class="relative h-screen w-full overflow-hidden flex flex-col">
-        <!-- Background Video -->
-        <video 
-            src="fuse-bg.mp4" 
-            autoplay muted loop playsinline preload="auto"
-            class="absolute inset-0 z-0 w-full h-[130%] object-cover object-top opacity-60"
-        ></video>
-        <div class="absolute inset-0 bg-gradient-to-b from-brand/80 via-brand/50 to-brand z-0"></div>
+        <!-- Background Logo Watermark -->
+        <div class="absolute inset-0 z-0 flex items-center justify-center overflow-hidden opacity-10 pointer-events-none mix-blend-screen">
+            <img src="fuse-logo.jpg" class="w-full max-w-4xl object-contain" alt="" />
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-b from-brand/90 via-brand/70 to-brand z-0"></div>
         
         <!-- Content Overlay -->
         <div class="relative z-10 flex flex-col h-full items-center px-4">
@@ -592,7 +590,7 @@
                         throw new Error(`Step 1 failed: ${errData.error || res.statusText}`);
                     }
                     let json = await res.json();
-                    if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
+                    if (json.usedFallback) showToast(`Model unavailable. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step1Output = json.output;
                     document.getElementById('outStep1').textContent = step1Output;
 
@@ -603,7 +601,7 @@
                         throw new Error(`Step 2 failed: ${errData.error || res.statusText}`);
                     }
                     json = await res.json();
-                    if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
+                    if (json.usedFallback) showToast(`Model unavailable. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step2Output = json.output;
                     document.getElementById('outStep2').textContent = step2Output;
 
@@ -614,7 +612,7 @@
                         throw new Error(`Step 3 failed: ${errData.error || res.statusText}`);
                     }
                     json = await res.json();
-                    if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
+                    if (json.usedFallback) showToast(`Model unavailable. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step3Output = json.output;
                     document.getElementById('outStep3').textContent = step3Output;
 
@@ -625,7 +623,7 @@
                         throw new Error(`Step 4 failed: ${errData.error || res.statusText}`);
                     }
                     json = await res.json();
-                    if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
+                    if (json.usedFallback) showToast(`Model unavailable. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step4Output = json.output;
                     
                     finalMarkdownOutput = step4Output;
@@ -683,7 +681,10 @@
                     body: JSON.stringify({ markdown: finalMarkdownOutput, companyName })
                 });
 
-                if (!response.ok) throw new Error('Failed to generate PDF');
+                if (!response.ok) {
+                    const errData = await response.json().catch(()=>({}));
+                    throw new Error(errData.error || 'Failed to generate PDF');
+                }
 
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);

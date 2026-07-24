@@ -47,9 +47,9 @@ async function callModel(prompt, modelOverride, isFallback = false) {
     if (!response.ok) {
         const err = await response.text();
         
-        // If rate limited or upstream error, and we haven't already fallen back, try GPT-OSS
-        if ((response.status === 429 || response.status === 502) && !isFallback) {
-            console.warn(`Model ${actualModel} is rate limited. Falling back to openai/gpt-oss-20b:free...`);
+        // If ANY error occurs (rate limit, out of credits, bad gateway) and we haven't already fallen back, try GPT-OSS
+        if (!isFallback) {
+            console.warn(`Model ${actualModel} failed with status ${response.status}. Falling back to openai/gpt-oss-20b:free...`);
             return callModel(prompt, 'openai/gpt-oss-20b:free', true);
         }
         
