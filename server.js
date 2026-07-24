@@ -37,6 +37,7 @@ async function callModel(prompt, modelOverride, isFallback = false) {
         },
         body: JSON.stringify({
             model: actualModel,
+            max_tokens: 4000,
             messages: [
                 { role: 'user', content: prompt }
             ]
