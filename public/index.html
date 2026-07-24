@@ -368,6 +368,13 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                 <span id="pdfBtnText">Download PDF</span>
                             </button>
+                            <!-- PDF generation progress bar -->
+                            <div id="pdfProgressBar" class="hidden w-full mt-2">
+                                <div class="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                                    <div id="pdfProgressInner" class="h-full bg-accent rounded-full transition-all duration-300" style="width:0%"></div>
+                                </div>
+                                <p id="pdfProgressLabel" class="text-xs text-slate-400 mt-1"></p>
+                            </div>
                         </div>
                     </div>
 
@@ -560,15 +567,21 @@
             document.getElementById('outStep3').textContent = '';
 
             const stopBtn = document.getElementById('stopBtn');
+            document.getElementById('finalBriefState').classList.remove('flex');
+            
+            document.getElementById('outStep1').textContent = 'Waiting for Agent...';
+            document.getElementById('outStep2').textContent = '';
+            document.getElementById('outStep3').textContent = '';
+
+            const stopBtn = document.getElementById('stopBtn');
             if(!isCustom) stopBtn.classList.remove('hidden');
             
             currentAbortController = new AbortController();
             const signal = currentAbortController.signal;
 
             try {
-                if (window.innerWidth < 1024) {
-                    progressTracker.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                // Always scroll to the pipeline progress tracker when run starts
+                setTimeout(() => progressTracker.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
 
                 if (isCustom) {
                     updateProgress(2, 50); 
@@ -650,6 +663,16 @@
                     updateProgress(5, 100);
                     document.getElementById('finalBriefState').classList.remove('hidden');
                     document.getElementById('finalBriefState').classList.add('flex');
+                    
+                    // Auto-scroll to Download PDF button if user hasn't already scrolled past it
+                    const dlBtn = document.getElementById('downloadPdfBtn');
+                    if (dlBtn) {
+                        const rect = dlBtn.getBoundingClientRect();
+                        const alreadyVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+                        if (!alreadyVisible) {
+                            setTimeout(() => dlBtn.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400);
+                        }
+                    }
                 }
             } catch (error) {
                 if (error.name === 'AbortError') {
@@ -713,24 +736,42 @@
             const originalText = btnText.textContent;
             const companyName = (document.getElementById('companyName') || {}).value || 'Company';
 
-            btnText.textContent = 'Generating...';
             document.getElementById('downloadPdfBtn').disabled = true;
+
+            // Animated "Downloading..." text
+            let dotCount = 0;
+            btnText.textContent = 'Downloading...';
+            const dotInterval = setInterval(() => {
+                dotCount = (dotCount + 1) % 4;
+                btnText.textContent = 'Downloading' + '.'.repeat(dotCount);
+            }, 400);
+
+            let fallbackToStandard = false;
 
             // ── LATEX PATH ──────────────────────────────────────────────────
             if (pdfFormat === 'latex') {
                 try {
-                    btnText.textContent = 'AI writing LaTeX...';
+                    // AbortController to timeout AI generation after 12 seconds
+                    const ac = new AbortController();
+                    const timeoutId = setTimeout(() => ac.abort(), 12000);
+
+                    // Fetch the LaTeX source, passing the selected AI model
+                    const modelSelection = document.getElementById('modelSelection') ? document.getElementById('modelSelection').value : 'auto';
                     const res = await fetch('/api/generate-latex-source', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ markdown: finalMarkdownOutput, companyName })
+                        body: JSON.stringify({ markdown: finalMarkdownOutput, companyName, modelSelection }),
+                        signal: ac.signal
                     });
+                    clearTimeout(timeoutId);
+
                     if (!res.ok) throw new Error(await res.text());
-                    const { latexSource } = await res.json();
+                    const { latexSource, usedModel } = await res.json();
+                    
+                    showToast(`Used ${usedModel} for LaTeX generation.`, 'info');
 
                     // Try compiling via texlive.net
                     try {
-                        btnText.textContent = 'Compiling LaTeX...';
                         const FormDataObj = new FormData();
                         const texBlob = new Blob([latexSource], { type: 'text/plain' });
                         FormDataObj.append('filecontents[]', texBlob, 'document.tex');
@@ -749,11 +790,13 @@
                             a.href = url; a.download = `${companyName.replace(/\s+/g,'_')}_Deal_Brief.pdf`;
                             document.body.appendChild(a); a.click(); a.remove();
                             URL.revokeObjectURL(url);
+                            
+                            clearInterval(dotInterval);
                             btnText.textContent = originalText;
                             document.getElementById('downloadPdfBtn').disabled = false;
-                            return;
+                            return; // Success! Exit handler.
                         }
-                    } catch(_) { /* compiler unavailable — fall through to .tex download */ }
+                    } catch(_) { /* compiler unavailable — fall through */ }
 
                     // Fallback: download the .tex source AND silently also render html2pdf
                     const texUrl = URL.createObjectURL(new Blob([latexSource], { type: 'text/plain' }));
@@ -761,19 +804,20 @@
                     a2.href = texUrl; a2.download = `${companyName.replace(/\s+/g,'_')}_Deal_Brief.tex`;
                     document.body.appendChild(a2); a2.click(); a2.remove();
                     URL.revokeObjectURL(texUrl);
-                    showToast('LaTeX compiler unavailable — downloaded .tex source. Also generating PDF fallback...', 'info');
-                    // Also produce html2pdf version so user always has a PDF
-                    if (typeof html2pdf !== 'undefined') {
-                        const el2 = document.getElementById('pdfContent');
-                        await html2pdf().set({ margin:[15,18,15,18], filename:`${companyName.replace(/\s+/g,'_')}_Deal_Brief.pdf`, image:{type:'jpeg',quality:0.99}, html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:794}, jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}, pagebreak:{mode:['avoid-all','css']} }).from(el2).save();
-                    }
+                    showToast('LaTeX compiler unavailable — downloaded .tex source. Generating fast fallback PDF...', 'warning');
+                    
+                    fallbackToStandard = true;
                 } catch (err) {
-                    alert('LaTeX generation failed: ' + err.message);
-                } finally {
-                    btnText.textContent = originalText;
-                    document.getElementById('downloadPdfBtn').disabled = false;
+                    if (err.name === 'AbortError') {
+                        showToast('LaTeX generation timed out. Falling back to fast standard PDF...', 'warning');
+                    } else {
+                        showToast('LaTeX generation skipped. Falling back to fast standard PDF...', 'info');
+                    }
+                    fallbackToStandard = true;
                 }
-                return;
+                
+                // If the latex generation didn't need to fallback, we shouldn't reach here (it returned early).
+                // If it DID set fallbackToStandard, we let execution flow downwards into the HTML2PDF block.
             }
 
             // ── HTML2PDF PATH ────────────────────────────────────────────────
@@ -880,6 +924,7 @@
                 console.error('PDF generation failed:', err);
                 alert('PDF generation failed: ' + err.message);
             } finally {
+                clearInterval(dotInterval);
                 btnText.textContent = originalText;
                 document.getElementById('downloadPdfBtn').disabled = false;
             }

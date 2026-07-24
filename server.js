@@ -297,7 +297,7 @@ If you used general knowledge with no specific source, still list it as: "Indust
 // AI-generated LaTeX source endpoint
 app.post('/api/generate-latex-source', async (req, res) => {
     try {
-        const { markdown, companyName } = req.body;
+        const { markdown, companyName, modelSelection } = req.body;
         const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
         const prompt = `You are a LaTeX expert. Convert the following deal brief (written in Markdown) into a complete, compilable LaTeX document using the article class.
@@ -320,7 +320,10 @@ REQUIREMENTS:
 MARKDOWN CONTENT TO CONVERT:
 ${markdown}`;
 
-        const { text } = await callModel(prompt, 'google/gemma-4-31b-it:free');
+        const defaultModel = 'google/gemini-2.5-flash';
+        const modelToUse = modelSelection && modelSelection !== 'auto' ? modelSelection : defaultModel;
+        
+        const { text, actualModel } = await callModel(prompt, modelToUse);
 
         // Strip any accidental markdown fences the model may have added
         const cleaned = text
@@ -328,7 +331,7 @@ ${markdown}`;
             .replace(/\s*```\s*$/, '')
             .trim();
 
-        res.json({ latexSource: cleaned });
+        res.json({ latexSource: cleaned, usedModel: actualModel.split('/')[1] || actualModel });
     } catch (error) {
         console.error('LaTeX source generation error:', error);
         res.status(500).json({ error: error.message });
