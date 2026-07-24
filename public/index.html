@@ -469,7 +469,7 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = \`\${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf\`;
+                a.download = `${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf`;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
