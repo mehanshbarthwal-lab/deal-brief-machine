@@ -3,6 +3,12 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const multer = require('multer');
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
+const FormData = require('form-data');
+const fsNode = require('fs');
+const upload = multer({ dest: 'uploads/' });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,6 +58,74 @@ async function callModel(prompt, modelOverride, isFallback = false) {
     const data = await response.json();
     return { text: data.choices[0].message.content, usedFallback: isFallback, actualModel: isFallback ? 'openai/gpt-oss-20b:free' : actualModel };
 }
+
+
+app.post('/api/parse-document', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) throw new Error("No file uploaded");
+        let extractedText = "";
+        const filePath = req.file.path;
+        
+        if (req.file.mimetype === 'application/pdf') {
+            const dataBuffer = fsNode.readFileSync(filePath);
+            const data = await pdfParse(dataBuffer);
+            extractedText = data.text;
+        } else if (req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            const result = await mammoth.extractRawText({ path: filePath });
+            extractedText = result.value;
+        } else if (req.file.mimetype === 'text/plain') {
+            extractedText = fsNode.readFileSync(filePath, 'utf8');
+        } else {
+            throw new Error("Unsupported file type. Please upload a PDF, DOCX, or TXT file.");
+        }
+        fsNode.unlinkSync(filePath);
+        
+        const prompt = `You are an AI assistant. Extract the following information from the provided document text and return ONLY a strict JSON object with these keys: "company", "what_they_do", "financials", "deal_type", "deal_size", "preferred_structure", "additional_context". If a field cannot be found, use an empty string "". Do not include markdown formatting.
+        
+        DOCUMENT TEXT:
+        ${extractedText.substring(0, 30000)}
+        `;
+        
+        const { text } = await callModel(prompt, 'google/gemma-4-31b-it:free');
+        let jsonRes = {};
+        try {
+            jsonRes = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+        } catch(e) {
+            console.error("Failed to parse JSON, returning raw");
+            jsonRes = { additional_context: extractedText.substring(0, 5000) };
+        }
+        res.json({ extracted: jsonRes, rawText: extractedText.substring(0, 10000) });
+    } catch (error) {
+        console.error("Error parsing document:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/custom-prompt', async (req, res) => {
+    try {
+        const { promptText, documentText, modelSelection } = req.body;
+        let stepModel = 'google/gemma-4-31b-it:free';
+        if (modelSelection && modelSelection !== 'auto') stepModel = modelSelection;
+        
+        const prompt = `You are a professional investment advisory AI. Generate a Deal Brief based on the user instructions and reference document. 
+        Format exactly with these headers:
+        ## Company Overview
+        ## Deal Rationale
+        ## Financing Requirement
+        ## Suggested Debt Structure
+        ## Initial Lender Considerations
+        
+        USER PROMPT: ${promptText}
+        REFERENCE DOCUMENT TEXT: ${documentText ? documentText.substring(0, 15000) : 'None provided.'}`;
+        
+        console.log(`Running Custom Prompt with ${stepModel}...`);
+        const { text, usedFallback, actualModel } = await callModel(prompt, stepModel);
+        res.json({ output: text, usedFallback, actualModel });
+    } catch (error) {
+        console.error("Error in custom prompt:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 app.post('/api/step1', async (req, res) => {
     try {
@@ -200,14 +274,19 @@ app.post('/api/generate-pdf', async (req, res) => {
     try {
         const { markdown, companyName } = req.body;
 
-        // Convert markdown to professional Beamer presentation
-        let latex = `\\documentclass[aspectratio=169]{beamer}
+        // Beamer Formatting Fixes (Spacious layout, better margins, professional theme)
+        let latex = `\\documentclass[aspectratio=169, 11pt]{beamer}
 \\usetheme{Boadilla}
 \\usecolortheme{whale}
 \\usepackage[utf8]{inputenc}
 \\usepackage[T1]{fontenc}
 \\usepackage{helvet}
+\\usepackage{setspace}
 \\renewcommand{\\familydefault}{\\sfdefault}
+
+\\setbeamertemplate{navigation symbols}{} % Hide nav bar
+\\setbeamersize{text margin left=8mm,text margin right=8mm} 
+\\setstretch{1.2} % Better line spacing
 
 \\title{Deal Brief: ${companyName}}
 \\author{Fuse Capital Group}
@@ -224,30 +303,32 @@ app.post('/api/generate-pdf', async (req, res) => {
 `;
         
         let body = markdown || '';
-        
-        // Escape latex characters safely
         body = body.replace(/\\/g, '\\textbackslash{}')
                    .replace(/&/g, '\\&')
                    .replace(/%/g, '\\%')
-                   .replace(/\\\$([^]*?)\\\$/g, '$$$1$$') // protect math if any, else escape
-                   .replace(/\$/g, '\\$')
+                   .replace(/\\\$([^]*?)\\\$/g, '$$1$')
+                   .replace(/\$/g, '\\    }
+});
+
+
+app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+});
+)
                    .replace(/#/g, '\\#')
                    .replace(/_/g, '\\_')
                    .replace(/{/g, '\\{')
                    .replace(/}/g, '\\}')
                    .replace(/£/g, '\\pounds{}');
 
-        // Fix back the textbackslash we just broke if we need to... wait, no markdown doesn't have backslashes usually.
-        // Actually, we replace * and # after escaping so we don't escape our own LaTeX!
         body = body
-            .replace(/^### (.*$)/gim, '\\vspace{1em}\\textbf{\\large $1}\\par\\vspace{0.5em}')
-            .replace(/^## (.*$)/gim, '\\vspace{1em}\\textcolor{blue}{\\textbf{\\Large $1}}\\par\\vspace{0.5em}')
-            .replace(/^# (.*$)/gim, '\\vspace{1em}\\textcolor{blue}{\\textbf{\\huge $1}}\\par\\vspace{1em}')
+            .replace(/^### (.*$)/gim, '\\vspace{0.8em}\\textbf{\\large $1}\\par\\vspace{0.3em}')
+            .replace(/^## (.*$)/gim, '\\vspace{1.5em}\\textcolor{blue}{\\textbf{\\Large $1}}\\par\\vspace{0.5em}')
+            .replace(/^# (.*$)/gim, '\\vspace{1.5em}\\textcolor{blue}{\\textbf{\\huge $1}}\\par\\vspace{1em}')
             .replace(/\*\*(.*?)\*\*/g, '\\textbf{$1}')
             .replace(/\*(.*?)\*/g, '\\textit{$1}');
 
-        // Handle simple itemized lists
-        const lines = body.split('\n'); // FIXED: was '\\n' instead of '\n'
+        const lines = body.split('\n');
         let inList = false;
         let parsedLines = [];
         
@@ -255,26 +336,36 @@ app.post('/api/generate-pdf', async (req, res) => {
             line = line.trim();
             if (line.startsWith('- ')) {
                 if (!inList) {
-                    parsedLines.push('\\begin{itemize}');
+                    parsedLines.push('\\vspace{0.3em}\\begin{itemize}\\setlength{\\itemsep}{0.5em}');
                     inList = true;
                 }
                 parsedLines.push(`  \\item ${line.substring(2)}`);
             } else {
                 if (inList) {
-                    parsedLines.push('\\end{itemize}');
+                    parsedLines.push('\\end{itemize}\\vspace{0.3em}');
                     inList = false;
                 }
                 if (line.length > 0) {
-                    parsedLines.push(line + '\\\\'); // Add newline for spacing in beamer
+                    parsedLines.push(line + '\\\\ \\vspace{0.3em}'); // Spacing after paragraphs
                 }
             }
         }
-        if (inList) parsedLines.push('\\end{itemize}');
+        if (inList) parsedLines.push('\\end{itemize}\\vspace{0.3em}');
 
         latex += parsedLines.join('\n') + '\n\\end{frame}\n\\end{document}';
 
-        // Fetch PDF from latexonline.cc
-        const response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(latex));
+        // Fix PDF POST Issue using FormData to avoid URL limits
+        const form = new FormData();
+        form.append('file', Buffer.from(latex), {
+            filename: 'document.tex',
+            contentType: 'application/x-tex',
+        });
+
+        const response = await fetch('https://latexonline.cc/compile', {
+            method: 'POST',
+            body: form
+        });
+
         if (!response.ok) {
             const errText = await response.text();
             throw new Error(`PDF compilation failed: ${response.statusText} - ${errText}`);
@@ -288,6 +379,8 @@ app.post('/api/generate-pdf', async (req, res) => {
     } catch (error) {
         console.error("PDF generation error:", error);
         res.status(500).json({ error: error.message });
+    }
+});
     }
 });
 

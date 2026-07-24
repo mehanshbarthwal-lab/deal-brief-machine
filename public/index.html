@@ -87,7 +87,7 @@
     <section class="relative h-screen w-full overflow-hidden flex flex-col">
         <!-- Background Video -->
         <video 
-            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260714_113715_c7e0daa0-8bdd-4486-a2da-040901f8f0ea.mp4" 
+            src="fuse-bg.mp4" 
             autoPlay muted loop playsInline 
             class="absolute inset-0 z-0 w-full h-[130%] object-cover object-top opacity-60"
         ></video>
@@ -150,9 +150,47 @@
             <!-- INPUT FORM (Left Col) -->
             <div class="lg:col-span-4 flex flex-col gap-6">
                 <div class="bg-glass backdrop-blur-xl rounded-2xl shadow-sm border border-glassBorder p-6 sm:p-8 glowing-box">
-                    <h2 class="font-serif text-3xl text-white mb-2">Deal Inputs</h2>
-                    <p class="text-sm text-slate-400 mb-8">Raw facts only. The multi-agent workflow handles the reasoning.</p>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-serif text-3xl text-white">Deal Brief</h2>
+                        <div class="bg-black/40 rounded-lg p-1 border border-white/10 flex text-xs font-semibold uppercase tracking-wider">
+                            <button id="modeStructured" class="px-3 py-1.5 rounded-md bg-accent text-white shadow-sm transition-all">Structured</button>
+                            <button id="modeCustom" class="px-3 py-1.5 rounded-md text-slate-400 hover:text-white transition-all">Custom</button>
+                        </div>
+                    </div>
+                    <p class="text-sm text-slate-400 mb-6" id="modeDesc">Raw facts only. The multi-agent workflow handles the reasoning.</p>
                     
+                    <!-- Document Upload Section -->
+                    <div class="mb-6 bg-black/20 rounded-xl border border-white/5 p-4 flex flex-col gap-3">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Reference Document (Optional)</label>
+                        <div class="flex items-center gap-3">
+                            <input type="file" id="fileUpload" accept=".pdf,.docx,.txt" class="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent/20 file:text-accent hover:file:bg-accent/30 transition-all cursor-pointer w-full">
+                            <button id="parseDocBtn" class="hidden shrink-0 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold py-2 px-4 rounded-lg transition-colors border border-white/10">Extract & Auto-Fill</button>
+                        </div>
+                        <p id="uploadStatus" class="text-xs text-orange-400 hidden"></p>
+                    </div>
+
+                    <!-- Custom Prompt Form (Hidden by default) -->
+                    <form id="customForm" class="hidden flex-col gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Your Instructions</label>
+                            <textarea id="customPromptInput" required placeholder="E.g., Write a deal brief for NovaBuild based on the attached document, focusing heavily on the SaaS metrics..." class="w-full rounded-lg px-4 py-3 text-sm h-48 resize-y outline-none transition-all bg-white/5 border border-white/10 focus:border-accent text-white"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">AI Engine</label>
+                            <select id="customModelSelection" class="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all cursor-pointer bg-white/5 border border-white/10 text-white">
+                                <option value="auto">Auto (Smart Routing)</option>
+                                <option value="google/gemma-4-31b-it:free">Google Gemma 4 31B (Pure)</option>
+                                <option value="openai/gpt-oss-20b:free">OpenAI GPT-OSS 20B (Pure)</option>
+                                <option value="meta-llama/llama-3.1-8b-instruct:free">Meta LLaMA 3.1 8B (Pure)</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="customSubmitBtn" class="mt-4 w-full bg-accent text-white font-semibold rounded-lg py-3 hover:bg-orange-600 transition-colors shadow-[0px_4px_16px_rgba(249,115,22,0.3)] flex items-center justify-center gap-2">
+                            <span>Execute Custom Pipeline</span>
+                            <div id="customBtnSpinner" class="spinner hidden"></div>
+                        </button>
+                    </form>
+
+                    <!-- Structured Form -->
                     <form id="dealForm" class="flex flex-col gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Company</label>
@@ -385,31 +423,8 @@
 
         document.getElementById('dealForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const submitBtn = document.getElementById('submitBtn');
-            const btnText = submitBtn.querySelector('span');
-            const btnSpinner = document.getElementById('btnSpinner');
-            
-            const placeholderState = document.getElementById('placeholderState');
-            const resultsState = document.getElementById('resultsState');
-            const progressTracker = document.getElementById('progressTracker');
-            
-            submitBtn.disabled = true;
-            btnText.textContent = 'Processing...';
-            btnSpinner.classList.remove('hidden');
-            
-            resultsState.classList.add('hidden');
-            placeholderState.classList.add('hidden');
-            progressTracker.classList.remove('hidden');
-
-            const stopBtn = document.getElementById('stopBtn');
-            stopBtn.classList.remove('hidden');
-            
-            currentAbortController = new AbortController();
-            const signal = currentAbortController.signal;
-
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
+            await runPipeline(false);
+        });
 
             try {
                 // Scroll to tracker
