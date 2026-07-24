@@ -10,6 +10,7 @@ The Deal Brief Machine is an advanced, AI-powered internal tool designed for **F
 - **Cinematic Video Background:** The background features a custom-generated, slow-motion 3D motion graphic loop of a translucent node network. The cyan/teal accents perfectly match Fuse Capital's brand identity.
 - **Dynamic Progress Tracker:** When the pipeline runs, a multi-step tracker appears, providing real-time visual feedback on which AI agent (Context Analysis, Structural Planning, Drafting, PDF Generation) is currently active.
 - **Toast Notifications:** A sleek, animated toast notification slides in from the top right to alert the user of important system events (e.g., if the AI engine is rate-limited and falls back to a backup model, or if the pipeline is halted).
+- **Text-Based Branding:** Upgraded the main logo and favicon to a custom typographic "FUSE CAPITAL" mark, tightly integrated into the top navigation bar.
 
 ## 🧠 AI Engine & Model Routing
 - **Multi-Model Support:** The application integrates with OpenRouter, allowing users to select their preferred AI engine:
@@ -17,7 +18,8 @@ The Deal Brief Machine is an advanced, AI-powered internal tool designed for **F
   - **Google Gemma 4 31B (Pure)**
   - **OpenAI GPT-OSS 20B (Pure)**
   - **Meta LLaMA 3.1 8B (Pure)**
-- **Automatic Fallback Protection:** If the selected AI model hits a 429 Rate Limit on OpenRouter, the backend intercepts the failure, automatically switches to a highly reliable backup model (like Llama 3 8B), and continues the pipeline seamlessly without crashing. The user is notified via a Toast.
+  - **xAI Grok 4.20**
+- **Automatic Fallback Protection:** If the selected AI model hits a 429 Rate Limit or 502/402 error on OpenRouter, the backend intercepts the failure, automatically switches to a highly reliable backup model (like Llama 3.1 8B), and continues the pipeline seamlessly without crashing. The user is notified via a Toast.
 
 ## ⚙️ Backend Architecture (Node.js/Express)
 - **4-Step Agentic Pipeline:**
@@ -27,12 +29,10 @@ The Deal Brief Machine is an advanced, AI-powered internal tool designed for **F
   - **Step 4:** Finalizes the content into clean Markdown.
 - **AbortController / Pipeline Halt:** The frontend is equipped with a native JavaScript `AbortController`. If a user clicks the red "Halt Pipeline" button, it severs the connection to the backend, immediately stopping all AI agents to save tokens and time.
 
-## 📑 Professional PDF Generation (Beamer)
-- **LaTeX to Slide Deck:** The backend utilizes LaTeX to generate the final output. Instead of a generic text document, we implemented the `beamer` document class with the `Boadilla` theme and `Whale` color palette to generate a **professional, blue-accented corporate slide deck**.
-- **Smart Markdown Parsing:** The backend parses the AI-generated Markdown and intelligently converts `## Headers` into new slide boundaries (`\begin{frame}`), automatically structuring the Deal Brief into a logical presentation format.
-- **Robust Escaping:** Special characters (like `£`, `%`, `&`, `$`) are safely escaped in the backend to ensure the LaTeX compiler never crashes on financial metrics.
-
----
+## 📑 Dual Professional PDF Generation
+- **Standard PDF (html2pdf):** Instantly captures the beautifully rendered dark-themed UI (complete with Tailwind styling and markdown bullet points) into a client-side PDF document.
+- **LaTeX PDF (Article Class):** The backend utilizes LaTeX to generate a highly professional, strict academic/corporate document. We replaced the older Beamer (PowerPoint) format with a robust `\documentclass{article}` structure featuring clean margins, `titlesec` formatting, and deep blue corporate accents.
+- **Robust Escaping:** Special characters (like `£`, `%`, `&`, `$`, `_`) are heavily sanitized and escaped via backend regex loops to ensure the external LaTeX compiler (`texlive.net`) never crashes on financial metrics.
 
 ## 📁 Document Extraction & Context Ingestion
 - **Multi-Format Parsing:** Integrated `pdf-parse` and `mammoth` libraries to extract raw text from `.pdf` and `.docx` (Microsoft Word) files on the backend.
@@ -40,11 +40,12 @@ The Deal Brief Machine is an advanced, AI-powered internal tool designed for **F
 
 ## 🎛️ Dual-Mode Pipeline
 - **Structured Mode:** The default, rigid 4-step pipeline that guarantees consistent, professional formatting based on strict deal parameters.
-- **Custom Mode:** Allows users to write a freeform prompt (e.g., "Analyze this 30-page PDF and write a brief highlighting the SaaS churn rate"). Bypasses the 4-step pipeline and directly instructs the AI to generate a Markdown slide deck tailored exactly to the user's specific prompt, leveraging the uploaded document as raw context.
+- **Custom Mode:** Allows users to write a freeform prompt (e.g., "Analyze this 30-page PDF and write a brief highlighting the SaaS churn rate"). Bypasses the 4-step pipeline and directly instructs the AI to generate a Markdown brief tailored exactly to the user's specific prompt, leveraging the uploaded document as raw context.
 
 ## ✨ Evolved UI States
-- **Terminal Placeholder:** Replaced the static, empty right-hand column with a highly polished "Awaiting Instructions" terminal state, featuring glowing SVG rings, rotating micro-animations (`animate-spin`, `animate-ping`), and deep glassmorphism to make the UI feel reactive and premium even when dormant.
-- **Mode Toggle:** Added a sleek, animated pill-toggle to instantly switch between Structured and Custom pipelines without reloading the page.
+- **Terminal Placeholder:** Features glowing SVG rings, rotating micro-animations (`animate-spin`, `animate-ping`), and deep glassmorphism to make the UI feel reactive and premium even when dormant.
+- **ChatGPT-Style Output Pane:** The final Markdown is seamlessly rendered into a dark `#1a1a24` container, complete with a top header bar and a 1-click **Copy to Clipboard** button.
+- **Hidden Actions:** To keep the UI pristine, action buttons (Copy, Standard PDF, LaTeX PDF) and final text only reveal themselves exactly when the generation pipeline hits 100%.
 
 ---
 *This document will be continuously updated as we add new features and refine the application.*
