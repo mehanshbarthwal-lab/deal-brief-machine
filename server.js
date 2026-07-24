@@ -20,7 +20,7 @@ if (!OPENROUTER_API_KEY) {
     console.warn("WARNING: OPENROUTER_API_KEY is not set in environment variables.");
 }
 
-async function callModel(prompt, modelOverride) {
+async function callModel(prompt, modelOverride, isFallback = false) {
     const actualModel = modelOverride || MODEL;
     
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -39,6 +39,13 @@ async function callModel(prompt, modelOverride) {
 
     if (!response.ok) {
         const err = await response.text();
+        
+        // If rate limited or upstream error, and we haven't already fallen back, try GPT-OSS
+        if ((response.status === 429 || response.status === 502) && !isFallback) {
+            console.warn(`Model ${actualModel} is rate limited. Falling back to openai/gpt-oss-20b:free...`);
+            return callModel(prompt, 'openai/gpt-oss-20b:free', true);
+        }
+        
         throw new Error(`OpenRouter API Error: ${response.status} ${err}`);
     }
 
