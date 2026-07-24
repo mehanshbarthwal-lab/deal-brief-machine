@@ -197,6 +197,10 @@
                             <span>Execute Pipeline</span>
                             <div id="btnSpinner" class="spinner hidden"></div>
                         </button>
+                        <button type="button" id="stopBtn" class="mt-2 hidden w-full bg-red-500/10 border border-red-500/30 text-red-400 font-semibold rounded-lg py-3 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
+                            <span>Halt Pipeline</span>
+                        </button>
                     </form>
                 </div>
             </div>
@@ -332,6 +336,13 @@
 
     <script>
         let finalMarkdownOutput = '';
+        let currentAbortController = null;
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            if (currentAbortController) {
+                currentAbortController.abort();
+            }
+        });
 
         function showToast(message) {
             const toast = document.getElementById('toast');
@@ -391,6 +402,12 @@
             placeholderState.classList.add('hidden');
             progressTracker.classList.remove('hidden');
 
+            const stopBtn = document.getElementById('stopBtn');
+            stopBtn.classList.remove('hidden');
+            
+            currentAbortController = new AbortController();
+            const signal = currentAbortController.signal;
+
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
 
@@ -402,7 +419,7 @@
 
                 // STEP 1
                 updateProgress(1, 15);
-                let res = await fetch('/api/step1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                let res = await fetch('/api/step1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), signal });
                 if (!res.ok) {
                     let errObj = await res.json().catch(()=>({}));
                     throw new Error("Step 1 failed: " + (errObj.error || res.statusText));
@@ -414,7 +431,7 @@
 
                 // STEP 2
                 updateProgress(2, 40);
-                res = await fetch('/api/step2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step1Output, modelSelection: data.modelSelection }) });
+                res = await fetch('/api/step2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step1Output, modelSelection: data.modelSelection }), signal });
                 if (!res.ok) {
                     let errObj = await res.json().catch(()=>({}));
                     throw new Error("Step 2 failed: " + (errObj.error || res.statusText));
@@ -426,7 +443,7 @@
 
                 // STEP 3
                 updateProgress(3, 65);
-                res = await fetch('/api/step3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step2Output, modelSelection: data.modelSelection }) });
+                res = await fetch('/api/step3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step2Output, modelSelection: data.modelSelection }), signal });
                 if (!res.ok) {
                     let errObj = await res.json().catch(()=>({}));
                     throw new Error("Step 3 failed: " + (errObj.error || res.statusText));
@@ -438,7 +455,7 @@
 
                 // STEP 4
                 updateProgress(4, 90);
-                res = await fetch('/api/step4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step3Output, modelSelection: data.modelSelection }) });
+                res = await fetch('/api/step4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step3Output, modelSelection: data.modelSelection }), signal });
                 if (!res.ok) {
                     let errObj = await res.json().catch(()=>({}));
                     throw new Error("Step 4 failed: " + (errObj.error || res.statusText));
@@ -456,13 +473,19 @@
                 resultsState.classList.add('flex');
                 
             } catch (error) {
-                alert('Pipeline Error: ' + error.message);
+                if (error.name === 'AbortError') {
+                    showToast("Pipeline forcefully halted by user.");
+                } else {
+                    alert('Pipeline Error: ' + error.message);
+                }
                 placeholderState.classList.remove('hidden');
                 progressTracker.classList.add('hidden');
             } finally {
                 submitBtn.disabled = false;
                 btnText.textContent = 'Execute Pipeline';
                 btnSpinner.classList.add('hidden');
+                stopBtn.classList.add('hidden');
+                currentAbortController = null;
                 
                 // Stop pulse on last step
                 for(let i=1; i<=4; i++) {
