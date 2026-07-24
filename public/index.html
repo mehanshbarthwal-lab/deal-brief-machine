@@ -366,12 +366,12 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <!-- Format toggle -->
                             <div class="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5 text-xs font-semibold">
-                                <button id="fmtPdf" onclick="setPdfFormat('pdf')" class="px-3 py-1.5 rounded-md transition-all bg-accent text-white shadow">PDF</button>
-                                <button id="fmtLatex" onclick="setPdfFormat('latex')" class="px-3 py-1.5 rounded-md transition-all text-slate-400 hover:text-white">LaTeX PDF</button>
+                                <button id="fmtPdf" onclick="setPdfFormat('pdf')" class="px-3 py-1.5 rounded-md transition-all text-slate-400 hover:text-white">PDF</button>
+                                <button id="fmtLatex" onclick="setPdfFormat('latex')" class="px-3 py-1.5 rounded-md transition-all bg-accent text-white shadow">LaTeX PDF</button>
                             </div>
                             <button id="downloadPdfBtn" class="flex items-center gap-2 bg-accent hover:bg-orange-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-[0px_4px_16px_rgba(249,115,22,0.3)] transition-all">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                <span id="pdfBtnText">Download PDF</span>
+                                <span id="pdfBtnText">LaTeX PDF</span>
                             </button>
                         </div>
                     </div>
@@ -691,8 +691,8 @@
                 .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:#6ee7b7;text-decoration:underline">$1</a>');
         }
 
-        // PDF format toggle state
-        let pdfFormat = 'pdf';
+        // PDF format toggle state — LaTeX is primary, html2pdf is the fallback
+        let pdfFormat = 'latex';
         function setPdfFormat(fmt) {
             pdfFormat = fmt;
             const btnPdf   = document.getElementById('fmtPdf');
@@ -760,13 +760,18 @@
                         }
                     } catch(_) { /* compiler unavailable — fall through to .tex download */ }
 
-                    // Fallback: download the .tex source so user/colleague can compile it
+                    // Fallback: download the .tex source AND silently also render html2pdf
                     const texUrl = URL.createObjectURL(new Blob([latexSource], { type: 'text/plain' }));
-                    const a = document.createElement('a');
-                    a.href = texUrl; a.download = `${companyName.replace(/\s+/g,'_')}_Deal_Brief.tex`;
-                    document.body.appendChild(a); a.click(); a.remove();
+                    const a2 = document.createElement('a');
+                    a2.href = texUrl; a2.download = `${companyName.replace(/\s+/g,'_')}_Deal_Brief.tex`;
+                    document.body.appendChild(a2); a2.click(); a2.remove();
                     URL.revokeObjectURL(texUrl);
-                    showToast('Compiler unavailable — downloaded .tex source instead. Open it in Overleaf or any LaTeX editor to compile.', 'info');
+                    showToast('LaTeX compiler unavailable — downloaded .tex source. Also generating PDF fallback...', 'info');
+                    // Also produce html2pdf version so user always has a PDF
+                    if (typeof html2pdf !== 'undefined') {
+                        const el2 = document.getElementById('pdfContent');
+                        await html2pdf().set({ margin:[15,18,15,18], filename:`${companyName.replace(/\s+/g,'_')}_Deal_Brief.pdf`, image:{type:'jpeg',quality:0.99}, html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:794}, jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}, pagebreak:{mode:['avoid-all','css']} }).from(el2).save();
+                    }
                 } catch (err) {
                     alert('LaTeX generation failed: ' + err.message);
                 } finally {
