@@ -696,51 +696,103 @@
             btnText.textContent = 'Generating PDF...';
             document.getElementById('downloadPdfBtn').disabled = true;
 
-            // Try LaTeX first
             try {
-                const res = await fetch('/api/generate-pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ markdown: finalMarkdownOutput, companyName })
-                });
+                if (typeof html2pdf === 'undefined') throw new Error('PDF library not loaded yet. Please wait a moment and try again.');
 
-                const contentType = res.headers.get('content-type') || '';
-                if (res.ok && contentType.includes('pdf')) {
-                    // LaTeX succeeded — download it
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${companyName.replace(/\s+/g, '_')}_Deal_Brief.pdf`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
-                    btnText.textContent = originalText;
-                    document.getElementById('downloadPdfBtn').disabled = false;
-                    return;
+                // Convert markdown to clean professional HTML (LaTeX article style)
+                function mdToLatexHtml(md) {
+                    let html = md
+                        // Headers
+                        .replace(/^## References$/gim, '<h2 class="refs-header">References</h2>')
+                        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                        // Bold / italic
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                        // Links
+                        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+                        // Numbered list items
+                        .replace(/^\d+\. (.*$)/gim, '<li class="num">$1</li>')
+                        // Bullet list items
+                        .replace(/^[-*] (.*$)/gim, '<li>$1</li>');
+
+                    // Wrap consecutive <li> into <ul> or <ol>
+                    html = html.replace(/(<li class="num">.*?<\/li>\n?)+/gs, m => `<ol>${m.replace(/ class="num"/g,'')}</ol>`);
+                    html = html.replace(/(<li>.*?<\/li>\n?)+/gs, m => `<ul>${m}</ul>`);
+
+                    // Paragraphs — split on double newlines, skip headings/lists
+                    html = html.split(/\n\n+/).map(block => {
+                        block = block.trim();
+                        if (!block) return '';
+                        if (/^<(h[123]|ul|ol|li)/.test(block)) return block;
+                        return `<p>${block.replace(/\n/g,' ')}</p>`;
+                    }).join('\n');
+
+                    return html;
                 }
-                // LaTeX API returned an error — fall through to html2pdf
-                console.warn('LaTeX API unavailable, falling back to html2pdf...');
-            } catch (e) {
-                console.warn('LaTeX request failed, falling back to html2pdf:', e.message);
-            }
 
-            // Fallback: html2pdf client-side render
-            try {
-                btnText.textContent = 'Rendering PDF...';
-                if (typeof html2pdf === 'undefined') throw new Error('html2pdf not loaded');
-                const element = document.getElementById('pdfContent');
+                const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+                const bodyHtml = mdToLatexHtml(finalMarkdownOutput);
+
+                const docHtml = `
+                <div id="pdf-render-target" style="
+                    font-family: 'Georgia', 'Times New Roman', Times, serif;
+                    font-size: 11pt;
+                    line-height: 1.6;
+                    color: #111;
+                    background: #fff;
+                    padding: 0;
+                    margin: 0;
+                    max-width: 100%;
+                    box-sizing: border-box;
+                ">
+                    <style>
+                        #pdf-render-target h1 { font-size: 20pt; font-weight: bold; margin: 0 0 4px 0; text-align: left; }
+                        #pdf-render-target .subtitle { font-size: 10pt; color: #555; margin: 0 0 2px 0; font-style: italic; }
+                        #pdf-render-target .dateline { font-size: 10pt; color: #555; margin: 0 0 24px 0; }
+                        #pdf-render-target .divider { border: none; border-top: 2px solid #1a2a4a; margin: 0 0 28px 0; }
+                        #pdf-render-target h2 { font-size: 13pt; font-weight: bold; color: #1a2a4a; text-transform: uppercase; letter-spacing: 0.04em; margin: 28px 0 4px 0; padding-bottom: 4px; border-bottom: 1px solid #c0c8d8; }
+                        #pdf-render-target h3 { font-size: 11pt; font-weight: bold; color: #1a2a4a; margin: 16px 0 6px 0; }
+                        #pdf-render-target p { margin: 0 0 10px 0; text-align: justify; }
+                        #pdf-render-target ul { margin: 6px 0 10px 20px; padding: 0; }
+                        #pdf-render-target ol { margin: 6px 0 10px 20px; padding: 0; }
+                        #pdf-render-target li { margin: 3px 0; }
+                        #pdf-render-target a { color: #1a2a4a; }
+                        #pdf-render-target .refs-header { font-size: 11pt; font-weight: bold; color: #1a2a4a; text-transform: uppercase; letter-spacing: 0.04em; margin: 28px 0 4px 0; padding-bottom: 4px; border-bottom: 1px solid #c0c8d8; }
+                        #pdf-render-target strong { font-weight: bold; }
+                        #pdf-render-target em { font-style: italic; }
+                    </style>
+
+                    <!-- Title Block -->
+                    <h1>Deal Brief: ${companyName}</h1>
+                    <p class="subtitle">Prepared by Fuse Capital Group</p>
+                    <p class="dateline">${today} &nbsp;&bull;&nbsp; Confidential &mdash; For Internal Review Only</p>
+                    <hr class="divider"/>
+
+                    <!-- Body -->
+                    ${bodyHtml}
+                </div>`;
+
+                // Inject into a hidden off-screen container
+                const container = document.createElement('div');
+                container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff;';
+                container.innerHTML = docHtml;
+                document.body.appendChild(container);
+                const target = container.querySelector('#pdf-render-target');
+
                 const opt = {
-                    margin: 10,
-                    filename: `${companyName.replace(/\s+/g, '_')}_Deal_Brief.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#1a1a24' },
+                    margin: [15, 18, 15, 18],
+                    filename: `${companyName.replace(/\s+/g,'_')}_Deal_Brief.pdf`,
+                    image: { type: 'jpeg', quality: 0.99 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
-                await html2pdf().set(opt).from(element).save();
+
+                await html2pdf().set(opt).from(target).save();
+                document.body.removeChild(container);
+
             } catch (err) {
-                console.error('html2pdf also failed:', err);
+                console.error('PDF generation failed:', err);
                 alert('PDF generation failed: ' + err.message);
             } finally {
                 btnText.textContent = originalText;
@@ -759,6 +811,7 @@
                 }, 2000);
             }).catch(err => {
                 console.error("Failed to copy text: ", err);
+
             });
         });
 
