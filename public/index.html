@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
@@ -750,27 +750,6 @@
             });
         });
 
-                if (!response.ok) {
-                    const errData = await response.json().catch(()=>({}));
-                    throw new Error(errData.error || 'Failed to generate PDF');
-                }
-
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
-            } catch(e) {
-                alert("Error generating PDF: " + e.message);
-            } finally {
-                btn.disabled = false;
-                btnText.textContent = originalText;
-            }
-        });
     </script>
 </body>
 </html>
