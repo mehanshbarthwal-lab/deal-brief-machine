@@ -33,4 +33,18 @@ The Deal Brief Machine is an advanced, AI-powered internal tool designed for **F
 - **Robust Escaping:** Special characters (like `£`, `%`, `&`, `$`) are safely escaped in the backend to ensure the LaTeX compiler never crashes on financial metrics.
 
 ---
+
+## 📁 Document Extraction & Context Ingestion
+- **Multi-Format Parsing:** Integrated `pdf-parse` and `mammoth` libraries to extract raw text from `.pdf` and `.docx` (Microsoft Word) files on the backend.
+- **Auto-Fill Mechanism:** If the user is in Structured Mode, the backend uses AI to intelligently map the extracted document text directly into the Deal Brief form inputs (Company, Financials, Deal Size, etc.) automatically.
+
+## 🎛️ Dual-Mode Pipeline
+- **Structured Mode:** The default, rigid 4-step pipeline that guarantees consistent, professional formatting based on strict deal parameters.
+- **Custom Mode:** Allows users to write a freeform prompt (e.g., "Analyze this 30-page PDF and write a brief highlighting the SaaS churn rate"). Bypasses the 4-step pipeline and directly instructs the AI to generate a Markdown slide deck tailored exactly to the user's specific prompt, leveraging the uploaded document as raw context.
+
+## ✨ Evolved UI States
+- **Terminal Placeholder:** Replaced the static, empty right-hand column with a highly polished "Awaiting Instructions" terminal state, featuring glowing SVG rings, rotating micro-animations (`animate-spin`, `animate-ping`), and deep glassmorphism to make the UI feel reactive and premium even when dormant.
+- **Mode Toggle:** Added a sleek, animated pill-toggle to instantly switch between Structured and Custom pipelines without reloading the page.
+
+---
 *This document will be continuously updated as we add new features and refine the application.*
