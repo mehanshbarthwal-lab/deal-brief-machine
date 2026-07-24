@@ -29,35 +29,37 @@ if (!OPENROUTER_API_KEY) {
 async function callModel(prompt, modelOverride, isFallback = false) {
     const actualModel = modelOverride || MODEL;
     
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: actualModel,
-            max_tokens: 4000,
-            messages: [
-                { role: 'user', content: prompt }
-            ]
-        })
-    });
+    try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: actualModel,
+                max_tokens: 4000,
+                messages: [
+                    { role: 'user', content: prompt }
+                ]
+            })
+        });
 
-    if (!response.ok) {
-        const err = await response.text();
-        
-        // If rate limited or upstream error, and we haven't already fallen back, try GPT-OSS
-        // If ANY error occurs (rate limit, out of credits, bad gateway) and we haven't already fallen back, try GPT-OSS
-        if (!isFallback) {
-            console.warn(`Model ${actualModel} failed with status ${response.status}. Falling back to openai/gpt-oss-20b:free...`);
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(`Status ${response.status}: ${err}`);
         }
-        
-        throw new Error(`OpenRouter API Error: ${response.status} ${err}`);
-    }
 
-    const data = await response.json();
-    return { text: data.choices[0].message.content, usedFallback: isFallback, actualModel: isFallback ? 'openai/gpt-oss-20b:free' : actualModel };
+        const data = await response.json();
+        return { text: data.choices[0].message.content, usedFallback: isFallback, actualModel: isFallback ? 'openai/gpt-oss-20b:free' : actualModel };
+        
+    } catch (error) {
+        if (!isFallback) {
+            console.warn(`Model ${actualModel} failed (${error.message}). Auto-switching to free fallback...`);
+            return callModel(prompt, 'openai/gpt-oss-20b:free', true);
+        }
+        throw new Error(`OpenRouter API completely failed after fallback: ${error.message}`);
+    }
 }
 
 
@@ -310,7 +312,7 @@ app.post('/api/generate-pdf', async (req, res) => {
         body = body.replace(/\\/g, '\\textbackslash{}')
                    .replace(/&/g, '\\&')
                    .replace(/%/g, '\\%')
-                   .replace(/\$/g, '\\$')
+                   .replace(/\\\$/g, '\\$')
                    .replace(/#/g, '\\#')
                    .replace(/_/g, '\\_')
                    .replace(/{/g, '\\{')
@@ -352,13 +354,20 @@ app.post('/api/generate-pdf', async (req, res) => {
 
         // Use texlive.net API for reliable LaTeX compilation
         const formattedLatex = latex.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
-        const form = new FormData();
-        form.append('filecontents[]', new Blob([formattedLatex], { type: 'text/plain' }), 'document.tex');
+        
+        const FormDataNode = require('form-data');
+        const nodeFetch = require('node-fetch');
+        
+        const form = new FormDataNode();
+        form.append('filecontents[]', Buffer.from(formattedLatex, 'utf-8'), {
+            filename: 'document.tex',
+            contentType: 'text/plain'
+        });
         form.append('filename[]', 'document.tex');
         form.append('engine', 'pdflatex');
         form.append('return', 'pdf');
 
-        const response = await fetch('https://texlive.net/cgi-bin/latexcgi', {
+        const response = await nodeFetch('https://texlive.net/cgi-bin/latexcgi', {
             method: 'POST',
             body: form
         });
