@@ -13,25 +13,340 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        serif: ['"Instrument Serif"', 'serif'],
-                    },
-                    colors: {
-                        brand: '#0F0920', // Darker for SaaS look
-                        accent: '#F97316',
-                        glass: 'rgba(255,255,255,0.05)',
-                        glassBorder: 'rgba(255,255,255,0.1)'
-                    },
-                    animation: {
-                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        let finalMarkdownOutput = '';
+        let currentAbortController = null;
+        let isCustomMode = false;
+        let parsedDocumentText = '';
+
+        // Mode Toggles
+        document.getElementById('modeStructured').addEventListener('click', () => {
+            isCustomMode = false;
+            document.getElementById('modeStructured').classList.replace('text-slate-400', 'bg-accent');
+            document.getElementById('modeStructured').classList.add('text-white', 'shadow-sm');
+            document.getElementById('modeCustom').classList.replace('bg-accent', 'text-slate-400');
+            document.getElementById('modeCustom').classList.remove('text-white', 'shadow-sm');
+            
+            document.getElementById('customForm').classList.replace('flex', 'hidden');
+            document.getElementById('dealForm').classList.replace('hidden', 'flex');
+            document.getElementById('modeDesc').textContent = "Raw facts only. The multi-agent workflow handles the reasoning.";
+            document.getElementById('parseDocBtn').textContent = "Extract & Auto-Fill";
+        });
+
+        document.getElementById('modeCustom').addEventListener('click', () => {
+            isCustomMode = true;
+            document.getElementById('modeCustom').classList.replace('text-slate-400', 'bg-accent');
+            document.getElementById('modeCustom').classList.add('text-white', 'shadow-sm');
+            document.getElementById('modeStructured').classList.replace('bg-accent', 'text-slate-400');
+            document.getElementById('modeStructured').classList.remove('text-white', 'shadow-sm');
+            
+            document.getElementById('dealForm').classList.replace('flex', 'hidden');
+            document.getElementById('customForm').classList.replace('hidden', 'flex');
+            document.getElementById('modeDesc').textContent = "Write freeform instructions. The AI will use your document as context.";
+            document.getElementById('parseDocBtn').textContent = "Extract Document";
+        });
+
+        // File Upload Logic
+        const fileInput = document.getElementById('fileUpload');
+        const parseBtn = document.getElementById('parseDocBtn');
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        if(fileInput) {
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    parseBtn.classList.remove('hidden');
+                } else {
+                    parseBtn.classList.add('hidden');
+                }
+            });
+        }
+
+        if(parseBtn) {
+            parseBtn.addEventListener('click', async () => {
+                if (!fileInput.files.length) return;
+                
+                parseBtn.disabled = true;
+                parseBtn.textContent = "Parsing...";
+                uploadStatus.classList.remove('hidden');
+                uploadStatus.textContent = "Uploading and extracting text...";
+                
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                try {
+                    const res = await fetch('/api/parse-document', { method: 'POST', body: formData });
+                    if (!res.ok) throw new Error(await res.text());
+                    
+                    const data = await res.json();
+                    parsedDocumentText = data.rawText;
+                    uploadStatus.textContent = "Document parsed successfully!";
+                    
+                    if (!isCustomMode && data.extracted) {
+                        uploadStatus.textContent = "Document parsed. Auto-filling form...";
+                        if(data.extracted.company) document.querySelector('[name="company"]').value = data.extracted.company;
+                        if(data.extracted.what_they_do) document.querySelector('[name="what_they_do"]').value = data.extracted.what_they_do;
+                        if(data.extracted.financials) document.querySelector('[name="financials"]').value = data.extracted.financials;
+                        if(data.extracted.deal_type) document.querySelector('[name="deal_type"]').value = data.extracted.deal_type;
+                        if(data.extracted.deal_size) document.querySelector('[name="deal_size"]').value = data.extracted.deal_size;
+                        if(data.extracted.preferred_structure) document.querySelector('[name="preferred_structure"]').value = data.extracted.preferred_structure;
+                        if(data.extracted.additional_context) document.querySelector('[name="additional_context"]').value = data.extracted.additional_context;
                     }
+                    
+                    setTimeout(() => uploadStatus.classList.add('hidden'), 5000);
+                } catch(e) {
+                    uploadStatus.textContent = "Parse failed: " + e.message;
+                } finally {
+                    parseBtn.disabled = false;
+                    parseBtn.textContent = isCustomMode ? "Extract Document" : "Extract & Auto-Fill";
+                }
+            });
+        }
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            if (currentAbortController) {
+                currentAbortController.abort();
+            }
+        });
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.remove('translate-x-[150%]', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-x-[150%]', 'opacity-0');
+            }, 6000);
+        }
+
+        function updateProgress(step, percent) {
+            document.getElementById('progressPercent').textContent = percent + '%';
+            document.getElementById('progressBar').style.width = percent + '%';
+            
+            // Reset all
+            for(let i=1; i<=4; i++) {
+                const ui = document.getElementById('uiStep' + i);
+                if(!ui) continue;
+                const dot = ui.querySelector('.step-indicator');
+                
+                if (i < step) {
+                    ui.classList.remove('opacity-50', 'animate-pulse');
+                    ui.classList.add('opacity-100');
+                    dot.classList.replace('bg-slate-500', 'bg-accent');
+                    dot.classList.replace('bg-white', 'bg-accent');
+                    dot.classList.remove('shadow-[0_0_8px_#fff]');
+                } else if (i === step) {
+                    ui.classList.remove('opacity-50');
+                    ui.classList.add('opacity-100', 'animate-pulse');
+                    dot.classList.replace('bg-slate-500', 'bg-white');
+                    dot.classList.replace('bg-accent', 'bg-white');
+                    dot.classList.add('shadow-[0_0_8px_#fff]');
+                } else {
+                    ui.classList.remove('opacity-100', 'animate-pulse');
+                    ui.classList.add('opacity-50');
+                    dot.classList.remove('bg-white', 'bg-accent', 'shadow-[0_0_8px_#fff]');
+                    dot.classList.add('bg-slate-500');
                 }
             }
         }
+
+        document.getElementById('dealForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await runPipeline(false);
+        });
+
+        document.getElementById('customForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await runPipeline(true);
+        });
+
+        async function runPipeline(isCustom) {
+            const submitBtn = isCustom ? document.getElementById('customSubmitBtn') : document.getElementById('submitBtn');
+            const btnText = submitBtn.querySelector('span');
+            const btnSpinner = isCustom ? document.getElementById('customBtnSpinner') : document.getElementById('btnSpinner');
+            
+            const placeholderState = document.getElementById('placeholderState');
+            const resultsState = document.getElementById('resultsState');
+            const progressTracker = document.getElementById('progressTracker');
+            
+            submitBtn.disabled = true;
+            btnText.textContent = 'Processing...';
+            btnSpinner.classList.remove('hidden');
+            
+            resultsState.classList.add('hidden');
+            placeholderState.classList.add('hidden');
+            progressTracker.classList.remove('hidden');
+
+            const stopBtn = document.getElementById('stopBtn');
+            if(!isCustom) stopBtn.classList.remove('hidden');
+            
+            currentAbortController = new AbortController();
+            const signal = currentAbortController.signal;
+
+            try {
+                if (window.innerWidth < 1024) {
+                    progressTracker.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                if (isCustom) {
+                    // Custom Pipeline
+                    updateProgress(2, 50); // Jump to halfway
+                    const promptText = document.getElementById('customPromptInput').value;
+                    const modelSelection = document.getElementById('customModelSelection').value;
+                    
+                    const res = await fetch('/api/custom-prompt', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ promptText, documentText: parsedDocumentText, modelSelection }), 
+                        signal 
+                    });
+                    
+                    if (!res.ok) throw new Error("Custom Pipeline failed.");
+                    const json = await res.json();
+                    
+                    finalMarkdownOutput = json.output;
+                    document.getElementById('pdfContent').innerHTML = parseMarkdownToHtml(json.output);
+                    
+                    document.getElementById('outStep1').textContent = "Skipped in Custom Mode";
+                    document.getElementById('outStep2').textContent = "Skipped in Custom Mode";
+                    document.getElementById('outStep3').textContent = "Custom Prompt Executed:\n\n" + json.output;
+                    
+                    updateProgress(5, 100);
+                    resultsState.classList.remove('hidden');
+                    resultsState.classList.add('flex');
+                    
+                } else {
+                    // Existing Structured Pipeline
+                    const formData = new FormData(document.getElementById('dealForm'));
+                    const data = Object.fromEntries(formData.entries());
+
+                    // STEP 1
+                    updateProgress(1, 15);
+                    let res = await fetch('/api/step1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), signal });
+                    if (!res.ok) {
+                        let errObj = await res.json().catch(()=>({}));
+                        throw new Error("Step 1 failed: " + (errObj.error || res.statusText));
+                    }
+                    let json = await res.json();
+                    if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
+                    const step1Output = json.output;
+                    document.getElementById('outStep1').textContent = step1Output;
+
+                    // STEP 2
+                    updateProgress(2, 40);
+                    res = await fetch('/api/step2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step1Output, modelSelection: data.modelSelection }), signal });
+                    if (!res.ok) {
+                        let errObj = await res.json().catch(()=>({}));
+                        throw new Error("Step 2 failed: " + (errObj.error || res.statusText));
+                    }
+                    json = await res.json();
+                    if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
+                    const step2Output = json.output;
+                    document.getElementById('outStep2').textContent = step2Output;
+
+                    // STEP 3
+                    updateProgress(3, 65);
+                    res = await fetch('/api/step3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step2Output, modelSelection: data.modelSelection }), signal });
+                    if (!res.ok) {
+                        let errObj = await res.json().catch(()=>({}));
+                        throw new Error("Step 3 failed: " + (errObj.error || res.statusText));
+                    }
+                    json = await res.json();
+                    if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
+                    const step3Output = json.output;
+                    document.getElementById('outStep3').textContent = step3Output;
+
+                    // STEP 4
+                    updateProgress(4, 90);
+                    res = await fetch('/api/step4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step3Output, modelSelection: data.modelSelection }), signal });
+                    if (!res.ok) {
+                        let errObj = await res.json().catch(()=>({}));
+                        throw new Error("Step 4 failed: " + (errObj.error || res.statusText));
+                    }
+                    json = await res.json();
+                    if (json.usedFallback) showToast(`Model rate limited. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
+                    const step4Output = json.output;
+                    
+                    finalMarkdownOutput = step4Output;
+                    document.getElementById('pdfContent').innerHTML = parseMarkdownToHtml(step4Output);
+
+                    updateProgress(5, 100); // 5 means all done
+                    
+                    resultsState.classList.remove('hidden');
+                    resultsState.classList.add('flex');
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showToast("Pipeline forcefully halted by user.");
+                } else {
+                    alert('Pipeline Error: ' + error.message);
+                }
+                placeholderState.classList.remove('hidden');
+                progressTracker.classList.add('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                btnText.textContent = isCustom ? 'Execute Custom Pipeline' : 'Execute Pipeline';
+                btnSpinner.classList.add('hidden');
+                if(!isCustom) stopBtn.classList.add('hidden');
+                currentAbortController = null;
+                
+                // Stop pulse on last step
+                for(let i=1; i<=4; i++) {
+                    const ui = document.getElementById('uiStep'+i);
+                    if(ui) ui.classList.remove('animate-pulse');
+                }
+            }
+        }
+
+        function parseMarkdownToHtml(md) {
+            let html = md.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\n\n/g, '</p><p>');
+            return '<p>' + html + '</p>';
+        }
+
+        // Backend PDF Generation
+        document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('downloadPdfBtn');
+            const btnText = document.getElementById('pdfBtnText');
+            const originalText = btnText.textContent;
+            
+            try {
+                btn.disabled = true;
+                btnText.textContent = 'Generating PDF...';
+                
+                let companyName = 'Deal';
+                if(!isCustomMode) {
+                    const compInput = document.querySelector('input[name="company"]');
+                    if(compInput) companyName = compInput.value.split(',')[0].trim();
+                } else {
+                    companyName = 'Custom_Brief';
+                }
+                
+                const response = await fetch('/api/generate-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markdown: finalMarkdownOutput, companyName })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate PDF');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                
+            } catch(e) {
+                alert("Error generating PDF: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = originalText;
+            }
+        });
     </script>
 
     <style>
@@ -290,10 +605,17 @@
                 </div>
 
                 <!-- Placeholder State -->
-                <div id="placeholderState" class="h-full min-h-[500px] flex flex-col items-center justify-center bg-glass backdrop-blur-xl rounded-2xl border border-glassBorder border-dashed p-12 text-center">
-                    <svg class="w-16 h-16 text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                    <h3 class="font-serif text-2xl text-slate-400 mb-2">Systems Standby</h3>
-                    <p class="text-slate-500 text-sm max-w-sm">Submit the form to initialize the 4-step autonomous pipeline.</p>
+                <div id="placeholderState" class="h-full min-h-[500px] flex flex-col items-center justify-center bg-glass backdrop-blur-xl rounded-2xl border border-glassBorder border-dashed p-12 text-center relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <div class="relative w-24 h-24 mb-6">
+                        <div class="absolute inset-0 border-2 border-slate-700 rounded-full animate-ping opacity-20"></div>
+                        <div class="absolute inset-2 border border-slate-600 rounded-full animate-[spin_4s_linear_infinite]"></div>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-10 h-10 text-slate-400 group-hover:text-accent transition-colors duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        </div>
+                    </div>
+                    <h3 class="font-serif text-2xl text-slate-300 mb-3 group-hover:text-white transition-colors duration-500">Awaiting Instructions</h3>
+                    <p class="text-slate-500 text-sm max-w-xs leading-relaxed">The multi-agent pipeline is dormant. Submit your deal parameters or a custom prompt to spin up the agents.</p>
                 </div>
 
                 <!-- Results State (Hidden initially) -->
