@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
@@ -13,6 +13,8 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -675,7 +677,17 @@
         }
 
         function parseMarkdownToHtml(md) {
-            return marked.parse(md);
+            if (typeof marked !== 'undefined') return marked.parse(md);
+            // Fallback if CDN fails to load
+            return md
+                .replace(/^## (.*$)/gim, '<h2 style="font-size:1.3em;font-weight:600;margin:1.2em 0 0.4em;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:0.3em">$1</h2>')
+                .replace(/^### (.*$)/gim, '<h3 style="font-size:1.1em;font-weight:600;margin:1em 0 0.3em">$1</h3>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/^- (.*$)/gim, '<li style="margin:0.2em 0">$1</li>')
+                .replace(/(<li.*<\/li>\n?)+/g, '<ul style="padding-left:1.5em;margin:0.5em 0">$&</ul>')
+                .replace(/\n\n/g, '</p><p style="margin:0.8em 0">')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:#6ee7b7;text-decoration:underline">$1</a>');
         }
 
         document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
