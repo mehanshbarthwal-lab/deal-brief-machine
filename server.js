@@ -9,6 +9,7 @@ const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const FormData = require('form-data');
 const fsNode = require('fs');
+const { marked } = require('marked');
 const upload = multer({ dest: 'uploads/' });
 
 const app = express();
@@ -66,29 +67,7 @@ async function callModel(prompt, modelOverride, isFallback = false) {
 
 // ── Server-side markdown → print HTML ────────────────────────────────────────
 function mdToHtml(md) {
-    let html = md
-        .replace(/^## References$/gim, '<h2 class="refs-header">References</h2>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-        .replace(/^\d+\. (.*$)/gim, '<li class="num">$1</li>')
-        .replace(/^[-*] (.*$)/gim, '<li>$1</li>');
-
-    // Wrap consecutive list items
-    html = html.replace(/(<li class="num">.*?<\/li>\n?)+/gs, m => `<ol>${m.replace(/ class="num"/g, '')}</ol>`);
-    html = html.replace(/(<li>.*?<\/li>\n?)+/gs, m => `<ul>${m}</ul>`);
-
-    // Paragraphs — split on double newlines
-    html = html.split(/\n\n+/).map(block => {
-        block = block.trim();
-        if (!block) return '';
-        if (/^<(h[123]|ul|ol|li)/.test(block)) return block;
-        return `<p>${block.replace(/\n/g, ' ')}</p>`;
-    }).join('\n');
-
-    return html;
+    return marked.parse(md);
 }
 
 
@@ -480,6 +459,27 @@ app.post('/api/generate-pdf-puppeteer', async (req, res) => {
       text-align: justify;
       orphans: 3;
       widows: 3;
+  }
+  table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px 0;
+      font-size: 10pt;
+      break-inside: auto;
+  }
+  tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+  }
+  th, td {
+      border: 1px solid #b0b8cc;
+      padding: 8px 10px;
+      text-align: left;
+  }
+  th {
+      background-color: #f4f6fa;
+      font-weight: bold;
+      color: #1a2a4a;
   }
   ul {
       margin: 5px 0 9px 0;
