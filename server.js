@@ -493,10 +493,14 @@ app.post('/api/generate-pdf-puppeteer', async (req, res) => {
             '--disable-gpu'
         ];
 
-        // Allow pointing to a system Chromium via env var (useful on puppeteer-core setups)
+        // Use explicit executablePath so Render always finds the Chrome
+        // downloaded by the postinstall hook (avoids "Could not find Chrome" error).
+        // PUPPETEER_EXECUTABLE_PATH env var overrides everything (for puppeteer-core setups).
         const launchOpts = { headless: true, args: launchArgs };
         if (process.env.PUPPETEER_EXECUTABLE_PATH) {
             launchOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        } else {
+            launchOpts.executablePath = puppeteer.executablePath();
         }
 
         browser = await puppeteer.launch(launchOpts);
