@@ -1,0 +1,17 @@
+{
+  "nodes": [
+    {
+      "id": "server.js",
+      "type": "file",
+      "category": "code",
+      "community": 0
+    },
+    {
+      "id": "public/index.html",
+      "type": "file",
+      "category": "code",
+      "community": 1
+    }
+  ],
+  "edges": []
+}
