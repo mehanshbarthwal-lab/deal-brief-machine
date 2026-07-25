@@ -370,7 +370,7 @@ const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium').default || require('@sparticuz/chromium');
 
 async function getBrowser() {
-    if (sharedBrowser && sharedBrowser.isConnected()) {
+    if (sharedBrowser && sharedBrowser.connected) {
         return sharedBrowser;
     }
     
