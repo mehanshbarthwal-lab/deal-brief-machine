@@ -365,6 +365,32 @@ ${markdown}`;
 });
 
 // ── Puppeteer PDF endpoint (primary PDF engine) ───────────────────────────────
+let sharedBrowser = null;
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium').default || require('@sparticuz/chromium');
+
+async function getBrowser() {
+    if (sharedBrowser && sharedBrowser.isConnected()) {
+        return sharedBrowser;
+    }
+    
+    // Optional: override the path if we are testing locally and want to use local Chrome
+    // otherwise let sparticuz handle it.
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH 
+        ? process.env.PUPPETEER_EXECUTABLE_PATH 
+        : await chromium.executablePath();
+
+    sharedBrowser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: executablePath,
+        headless: chromium.headless,
+        ignoreHTTPSErrors: true,
+    });
+    
+    return sharedBrowser;
+}
+
 app.post('/api/generate-pdf-puppeteer', async (req, res) => {
     const { markdown, companyName } = req.body;
     if (!markdown) return res.status(400).json({ error: 'No markdown provided' });
@@ -481,25 +507,10 @@ app.post('/api/generate-pdf-puppeteer', async (req, res) => {
 </body>
 </html>`;
 
-    let browser;
+    let page;
     try {
-        const puppeteer = require('puppeteer-core');
-        const chromium = require('@sparticuz/chromium').default || require('@sparticuz/chromium');
-
-        // Optional: override the path if we are testing locally and want to use local Chrome
-        // otherwise let sparticuz handle it.
-        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH 
-            ? process.env.PUPPETEER_EXECUTABLE_PATH 
-            : await chromium.executablePath();
-
-        browser = await puppeteer.launch({
-            args: chromium.args,
-            defaultViewport: chromium.defaultViewport,
-            executablePath: executablePath,
-            headless: chromium.headless,
-            ignoreHTTPSErrors: true,
-        });
-        const page = await browser.newPage();
+        const browser = await getBrowser();
+        page = await browser.newPage();
         await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
 
         const pdfBuffer = await page.pdf({
@@ -517,7 +528,7 @@ app.post('/api/generate-pdf-puppeteer', async (req, res) => {
         console.error('Puppeteer PDF generation error:', err);
         res.status(500).json({ error: err.message });
     } finally {
-        if (browser) await browser.close().catch(() => {});
+        if (page) await page.close().catch(() => {});
     }
 });
 
