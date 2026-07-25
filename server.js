@@ -500,7 +500,8 @@ app.post('/api/generate-pdf-puppeteer', async (req, res) => {
         if (process.env.PUPPETEER_EXECUTABLE_PATH) {
             launchOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
         } else {
-            launchOpts.executablePath = puppeteer.executablePath();
+            // executablePath() returns a Promise in puppeteer v20+ — must await it
+            launchOpts.executablePath = await Promise.resolve(puppeteer.executablePath());
         }
 
         browser = await puppeteer.launch(launchOpts);
