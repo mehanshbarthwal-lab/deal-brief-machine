@@ -20,6 +20,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuration
 const MODEL = process.env.MODEL_NAME || 'google/gemma-4-31b-it:free';
+const FALLBACK_MODEL = 'openai/gpt-oss-20b:free';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 if (!OPENROUTER_API_KEY) {
@@ -51,15 +52,42 @@ async function callModel(prompt, modelOverride, isFallback = false) {
         }
 
         const data = await response.json();
-        return { text: data.choices[0].message.content, usedFallback: isFallback, actualModel: isFallback ? 'openai/gpt-oss-20b:free' : actualModel };
+        return { text: data.choices[0].message.content, usedFallback: isFallback, actualModel: isFallback ? FALLBACK_MODEL : actualModel };
         
     } catch (error) {
         if (!isFallback) {
-            console.warn(`Model ${actualModel} failed (${error.message}). Auto-switching to free fallback...`);
-            return callModel(prompt, 'openai/gpt-oss-20b:free', true);
+            console.warn(`Model ${actualModel} failed (${error.message}). Auto-switching to fallback model via OpenRouter...`);
+            return callModel(prompt, FALLBACK_MODEL, true);
         }
         throw new Error(`OpenRouter API completely failed after fallback: ${error.message}`);
     }
+}
+
+// ── Server-side markdown → print HTML ────────────────────────────────────────
+function mdToHtml(md) {
+    let html = md
+        .replace(/^## References$/gim, '<h2 class="refs-header">References</h2>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+        .replace(/^\d+\. (.*$)/gim, '<li class="num">$1</li>')
+        .replace(/^[-*] (.*$)/gim, '<li>$1</li>');
+
+    // Wrap consecutive list items
+    html = html.replace(/(<li class="num">.*?<\/li>\n?)+/gs, m => `<ol>${m.replace(/ class="num"/g, '')}</ol>`);
+    html = html.replace(/(<li>.*?<\/li>\n?)+/gs, m => `<ul>${m}</ul>`);
+
+    // Paragraphs — split on double newlines
+    html = html.split(/\n\n+/).map(block => {
+        block = block.trim();
+        if (!block) return '';
+        if (/^<(h[123]|ul|ol|li)/.test(block)) return block;
+        return `<p>${block.replace(/\n/g, ' ')}</p>`;
+    }).join('\n');
+
+    return html;
 }
 
 
@@ -139,7 +167,6 @@ app.post('/api/step1', async (req, res) => {
         
         let stepModel = 'google/gemma-4-31b-it:free';
         if (modelSelection && modelSelection !== 'auto') stepModel = modelSelection;
-        // if auto, keep gemma for data extraction (step 1)
 
         const prompt = `You are a data extraction assistant for an investment advisory firm. Your only job in this step is to take the raw deal inputs below and reorganize them into a clean structured format. Do not analyze, do not infer, do not add anything that isn't explicitly stated. If a detail isn't given, write "Not specified" rather than guessing.
 
@@ -178,7 +205,6 @@ app.post('/api/step2', async (req, res) => {
         
         let stepModel = 'google/gemma-4-31b-it:free';
         if (modelSelection && modelSelection !== 'auto') stepModel = modelSelection;
-        // if auto, keep gemma for reasoning & analysis (step 2)
 
         const prompt = `You are a credit analyst at an investment advisory firm reviewing a new mandate. Below is a structured fact sheet on a company seeking financing. Your job is to reason through what these facts actually imply, not to write the brief yet, just to think it through clearly.
 
@@ -213,7 +239,7 @@ app.post('/api/step3', async (req, res) => {
 
         let stepModel = 'google/gemma-4-31b-it:free';
         if (modelSelection && modelSelection !== 'auto') stepModel = modelSelection;
-        if (modelSelection === 'auto') stepModel = 'openai/gpt-oss-20b:free'; // if auto, use GPT for prose generation (step 3)
+        if (modelSelection === 'auto') stepModel = 'openai/gpt-oss-20b:free';
 
         const prompt = `You are drafting an initial deal brief for the delivery team at an investment advisory firm. This brief will be reviewed and refined by a human analyst before going anywhere near a client or lender, so it needs to be a strong, honest first draft, not a polished final document.
 
@@ -253,7 +279,7 @@ app.post('/api/step4', async (req, res) => {
 
         let stepModel = 'google/gemma-4-31b-it:free';
         if (modelSelection && modelSelection !== 'auto') stepModel = modelSelection;
-        if (modelSelection === 'auto') stepModel = 'openai/gpt-oss-20b:free'; // if auto, use GPT for prose polishing (step 4)
+        if (modelSelection === 'auto') stepModel = 'openai/gpt-oss-20b:free';
 
         const prompt = `Below is a draft deal brief. Review it critically against this checklist, then produce a revised final version.
 
@@ -294,7 +320,7 @@ If you used general knowledge with no specific source, still list it as: "Indust
     }
 });
 
-// AI-generated LaTeX source endpoint
+// ── AI-generated LaTeX source (retained for reference) ────────────────────────
 app.post('/api/generate-latex-source', async (req, res) => {
     try {
         const { markdown, companyName, modelSelection } = req.body;
@@ -325,7 +351,6 @@ ${markdown}`;
         
         const { text, actualModel } = await callModel(prompt, modelToUse);
 
-        // Strip any accidental markdown fences the model may have added
         const cleaned = text
             .replace(/^```(?:latex|tex)?\s*/i, '')
             .replace(/\s*```\s*$/, '')
@@ -338,124 +363,165 @@ ${markdown}`;
     }
 });
 
-app.post('/api/generate-pdf', async (req, res) => {
+// ── Puppeteer PDF endpoint (primary PDF engine) ───────────────────────────────
+app.post('/api/generate-pdf-puppeteer', async (req, res) => {
+    const { markdown, companyName } = req.body;
+    if (!markdown) return res.status(400).json({ error: 'No markdown provided' });
+
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const bodyHtml = mdToHtml(markdown);
+
+    const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+      size: A4;
+      margin: 25mm 22mm 25mm 22mm;
+  }
+  * { box-sizing: border-box; }
+  body {
+      font-family: 'Georgia', 'Times New Roman', Times, serif;
+      font-size: 11pt;
+      line-height: 1.65;
+      color: #111;
+      background: #fff;
+      margin: 0;
+      padding: 0;
+  }
+  .title-block { margin-bottom: 24px; }
+  h1.doc-title {
+      font-size: 20pt;
+      font-weight: bold;
+      margin: 0 0 4px 0;
+      color: #0a1628;
+      letter-spacing: -0.01em;
+  }
+  .subtitle {
+      font-size: 10pt;
+      color: #555;
+      margin: 2px 0;
+      font-style: italic;
+  }
+  .dateline {
+      font-size: 10pt;
+      color: #666;
+      margin: 2px 0 18px 0;
+  }
+  hr.divider {
+      border: none;
+      border-top: 2px solid #1a2a4a;
+      margin: 0 0 24px 0;
+  }
+  h2 {
+      font-family: 'Georgia', serif;
+      font-size: 11.5pt;
+      font-weight: bold;
+      color: #1a2a4a;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin: 26px 0 5px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #b0b8cc;
+      page-break-after: avoid;
+      break-after: avoid;
+  }
+  h2.refs-header {
+      font-family: 'Georgia', serif;
+      font-size: 11.5pt;
+      font-weight: bold;
+      color: #1a2a4a;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin: 26px 0 5px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #b0b8cc;
+      page-break-after: avoid;
+      break-after: avoid;
+  }
+  h3 {
+      font-size: 11pt;
+      font-weight: bold;
+      color: #1a2a4a;
+      margin: 18px 0 5px 0;
+      page-break-after: avoid;
+      break-after: avoid;
+  }
+  p {
+      margin: 0 0 9px 0;
+      text-align: justify;
+      orphans: 3;
+      widows: 3;
+  }
+  ul {
+      margin: 5px 0 9px 0;
+      padding-left: 20px;
+  }
+  ol {
+      margin: 5px 0 9px 0;
+      padding-left: 22px;
+  }
+  li { margin: 3px 0; }
+  a { color: #1a2a4a; text-decoration: underline; }
+  strong { font-weight: bold; }
+  em { font-style: italic; }
+  h2 + p, h3 + p { break-before: avoid; }
+</style>
+</head>
+<body>
+  <div class="title-block">
+      <h1 class="doc-title">Deal Brief: ${companyName}</h1>
+      <p class="subtitle">Prepared by Fuse Capital Group</p>
+      <p class="dateline">${today} &nbsp;&bull;&nbsp; Confidential &mdash; For Internal Review Only</p>
+      <hr class="divider"/>
+  </div>
+  ${bodyHtml}
+</body>
+</html>`;
+
+    let browser;
     try {
-        const { markdown, companyName } = req.body;
+        // Lazy-load puppeteer so server starts even if install is incomplete
+        const puppeteer = require('puppeteer');
 
-        // Professional Article Layout
-        let latex = `\\documentclass[11pt, a4paper]{article}
-\\usepackage[utf8]{inputenc}
-\\usepackage[T1]{fontenc}
-\\usepackage{helvet}
-\\usepackage{setspace}
-\\usepackage[margin=1in]{geometry}
-\\usepackage{xcolor}
-\\usepackage{titlesec}
-\\renewcommand{\\familydefault}{\\sfdefault}
+        // On Render and most Linux cloud hosts, --no-sandbox is required
+        const launchArgs = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu'
+        ];
 
-\\definecolor{brandblue}{RGB}{20, 40, 80}
-\\titleformat{\\section}{\\vspace{1.5em}\\color{brandblue}\\normalfont\\Large\\bfseries}{}{0em}{}[\\vspace{0.2em}\\titlerule]
-\\titleformat{\\subsection}{\\vspace{1em}\\color{brandblue}\\normalfont\\large\\bfseries}{}{0em}{}
-
-\\setstretch{1.3} % Professional line spacing
-
-\\title{\\vspace{-4em}\\textbf{\\huge Deal Brief: ${companyName}}}
-\\author{Fuse Capital Group}
-\\date{\\today}
-
-\\begin{document}
-\\maketitle
-\\vspace{1em}
-`;
-        
-        let body = markdown || '';
-        body = body.replace(/\\/g, '\\textbackslash{}')
-                   .replace(/&/g, '\\&')
-                   .replace(/%/g, '\\%')
-                   .replace(/\$/g, '\\$')
-                   .replace(/#/g, '\\#')
-                   .replace(/_/g, '\\_')
-                   .replace(/{/g, '\\{')
-                   .replace(/}/g, '\\}')
-                   .replace(/£/g, '\\pounds{}');
-
-        body = body
-            .replace(/^### (.*$)/gim, '\\subsection*{$1}')
-            .replace(/^## (.*$)/gim, '\\section*{$1}')
-            .replace(/^# (.*$)/gim, '\\section*{$1}')
-            .replace(/\*\*(.*?)\*\*/g, '\\textbf{$1}')
-            .replace(/\*(.*?)\*/g, '\\textit{$1}');
-
-        const lines = body.split('\n');
-        let inList = false;
-        let parsedLines = [];
-        
-        for (let line of lines) {
-            line = line.trim();
-            if (line.startsWith('- ')) {
-                if (!inList) {
-                    parsedLines.push('\\begin{itemize}\\setlength{\\itemsep}{0.3em}');
-                    inList = true;
-                }
-                parsedLines.push(`  \\item ${line.substring(2)}`);
-            } else {
-                if (inList) {
-                    parsedLines.push('\\end{itemize}');
-                    inList = false;
-                }
-                if (line.length > 0) {
-                    parsedLines.push(line + '\\\\'); // Spacing after paragraphs
-                }
-            }
+        // Allow pointing to a system Chromium via env var (useful on puppeteer-core setups)
+        const launchOpts = { headless: true, args: launchArgs };
+        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+            launchOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
         }
-        if (inList) parsedLines.push('\\end{itemize}');
 
-        latex += parsedLines.join('\n') + '\n\\end{document}';;
+        browser = await puppeteer.launch(launchOpts);
+        const page = await browser.newPage();
+        await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
 
-        // Use texlive.net API for reliable LaTeX compilation
-        const formattedLatex = latex.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
-        
-        const FormDataNode = require('form-data');
-        const nodeFetch = require('node-fetch');
-        
-        const form = new FormDataNode();
-        form.append('filecontents[]', Buffer.from(formattedLatex, 'utf-8'), {
-            filename: 'document.tex',
-            contentType: 'text/plain'
-        });
-        form.append('filename[]', 'document.tex');
-        form.append('engine', 'pdflatex');
-        form.append('return', 'pdf');
-
-        const response = await nodeFetch('https://texlive.net/cgi-bin/latexcgi', {
-            method: 'POST',
-            body: form
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: false,
+            margin: { top: '25mm', right: '22mm', bottom: '25mm', left: '22mm' }
         });
 
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('text/plain')) {
-            const errText = await response.text();
-            throw new Error(`LaTeX Compilation Error:\n${errText}`);
-        }
-
-        if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`PDF compilation failed: ${response.statusText} - ${errText}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const safeName = (companyName || 'Company').replace(/[^a-z0-9]/gi, '_');
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${companyName.replace(/[^a-z0-9]/gi, '_')}_Deal_Brief.pdf"`);
-        res.send(buffer);
-        
-    } catch (error) {
-        console.error("PDF generation error:", error);
-        res.status(500).json({ error: error.message });
+        res.setHeader('Content-Disposition', `attachment; filename="${safeName}_Deal_Brief.pdf"`);
+        res.send(Buffer.from(pdfBuffer));
+
+    } catch (err) {
+        console.error('Puppeteer PDF generation error:', err);
+        res.status(500).json({ error: err.message });
+    } finally {
+        if (browser) await browser.close().catch(() => {});
     }
 });
 
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
 });
-

@@ -14,7 +14,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -77,13 +77,10 @@
 </head>
 <body class="antialiased selection:bg-accent/30 text-slate-200">
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed top-6 right-6 bg-orange-600/95 text-white px-6 py-4 rounded-xl shadow-[0_4px_30px_rgba(249,115,22,0.4)] border border-orange-400/30 transform transition-all duration-300 translate-x-[150%] opacity-0 z-50 flex items-center gap-3 backdrop-blur-md">
-        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-        <div>
-            <p class="text-sm font-bold tracking-wide">Network Rate Limit Detected</p>
-            <p class="text-xs text-white/90 mt-1 font-medium" id="toastMessage">Automatically switched to fallback model.</p>
-        </div>
+    <!-- Toast Notification (neutral info style) -->
+    <div id="toast" class="fixed top-6 right-6 bg-slate-800/95 text-white px-5 py-3.5 rounded-xl shadow-lg border border-white/10 transform transition-all duration-300 translate-x-[150%] opacity-0 z-50 flex items-center gap-3 backdrop-blur-md">
+        <svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <p class="text-sm text-slate-200" id="toastMessage"></p>
     </div>
 
     <!-- HERO SECTION -->
@@ -181,12 +178,13 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">AI Engine</label>
                             <select id="customModelSelection" class="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all cursor-pointer bg-white/5 border border-white/10 text-white">
-                                <option value="auto">Auto (Best for overall quality)</option>
-                                <option value="x-ai/grok-4.20">xAI Grok 4.20 (Best for blazing fast responses)</option>
-                                <option value="google/gemma-2-27b-it">Google Gemma 27B (Best for logic & structuring)</option>
-                                <option value="openai/gpt-4o-mini">OpenAI GPT-4o Mini (Best for creative prose)</option>
-                                <option value="meta-llama/llama-3.1-8b-instruct">Meta LLaMA 3.1 8B (Best for fallback reliability)</option>
+                                <option value="auto">Balanced (Recommended)</option>
+                                <option value="x-ai/grok-4.20">Fast</option>
+                                <option value="google/gemma-2-27b-it">Precise</option>
+                                <option value="openai/gpt-4o-mini">Creative</option>
+                                <option value="meta-llama/llama-3.1-8b-instruct">Lightweight</option>
                             </select>
+                            <p class="text-xs text-slate-500 mt-1.5 leading-snug">Uses a primary model via OpenRouter with automatic fallback if rate-limited, so the pipeline always completes.</p>
                         </div>
                         <button type="submit" id="customSubmitBtn" class="mt-4 w-full bg-accent text-white font-semibold rounded-lg py-3 hover:bg-orange-600 transition-colors shadow-[0px_4px_16px_rgba(249,115,22,0.3)] flex items-center justify-center gap-2">
                             <span>Execute Custom Pipeline</span>
@@ -228,12 +226,13 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">AI Engine</label>
                             <select name="modelSelection" class="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all cursor-pointer">
-                                <option value="auto">Auto (Best for overall quality)</option>
-                                <option value="x-ai/grok-4.20">xAI Grok 4.20 (Best for blazing fast responses)</option>
-                                <option value="google/gemma-2-27b-it">Google Gemma 27B (Best for logic & structuring)</option>
-                                <option value="openai/gpt-4o-mini">OpenAI GPT-4o Mini (Best for creative prose)</option>
-                                <option value="meta-llama/llama-3.1-8b-instruct">Meta LLaMA 3.1 8B (Best for fallback reliability)</option>
+                                <option value="auto">Balanced (Recommended)</option>
+                                <option value="x-ai/grok-4.20">Fast</option>
+                                <option value="google/gemma-2-27b-it">Precise</option>
+                                <option value="openai/gpt-4o-mini">Creative</option>
+                                <option value="meta-llama/llama-3.1-8b-instruct">Lightweight</option>
                             </select>
+                            <p class="text-xs text-slate-500 mt-1.5 leading-snug">Uses a primary model via OpenRouter with automatic fallback if rate-limited, so the pipeline always completes.</p>
                         </div>
                         
                         <button type="submit" id="submitBtn" class="mt-4 w-full bg-accent text-white font-semibold rounded-lg py-3 hover:bg-orange-600 transition-colors shadow-[0px_4px_16px_rgba(249,115,22,0.3)] flex items-center justify-center gap-2">
@@ -616,9 +615,9 @@
                         throw new Error(`Step 1 failed: ${errData.error || res.statusText}`);
                     }
                     let json = await res.json();
-                    if (json.usedFallback) showToast(`Model unavailable. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step1Output = json.output;
-                    document.getElementById('outStep1').textContent = step1Output;
+                    document.getElementById('outStep1').textContent = step1Output +
+                        (json.usedFallback ? '\n\n[System: Switched to secondary model — pipeline continued normally.]' : '');
 
                     updateProgress(2, 40);
                     res = await fetch('/api/step2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step1Output, modelSelection: data.modelSelection }), signal });
@@ -627,9 +626,9 @@
                         throw new Error(`Step 2 failed: ${errData.error || res.statusText}`);
                     }
                     json = await res.json();
-                    if (json.usedFallback) showToast(`Model unavailable. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step2Output = json.output;
-                    document.getElementById('outStep2').textContent = step2Output;
+                    document.getElementById('outStep2').textContent = step2Output +
+                        (json.usedFallback ? '\n\n[System: Switched to secondary model — pipeline continued normally.]' : '');
 
                     updateProgress(3, 65);
                     res = await fetch('/api/step3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step2Output, modelSelection: data.modelSelection }), signal });
@@ -638,9 +637,9 @@
                         throw new Error(`Step 3 failed: ${errData.error || res.statusText}`);
                     }
                     json = await res.json();
-                    if (json.usedFallback) showToast(`Model unavailable. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step3Output = json.output;
-                    document.getElementById('outStep3').textContent = step3Output;
+                    document.getElementById('outStep3').textContent = step3Output +
+                        (json.usedFallback ? '\n\n[System: Switched to secondary model — pipeline continued normally.]' : '');
 
                     updateProgress(4, 90);
                     res = await fetch('/api/step4', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step3Output, modelSelection: data.modelSelection }), signal });
@@ -649,7 +648,6 @@
                         throw new Error(`Step 4 failed: ${errData.error || res.statusText}`);
                     }
                     json = await res.json();
-                    if (json.usedFallback) showToast(`Model unavailable. Automatically switched to ${json.actualModel.split('/')[1]} to continue processing.`);
                     const step4Output = json.output;
                     
                     finalMarkdownOutput = step4Output;
@@ -704,218 +702,54 @@
                 .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:#6ee7b7;text-decoration:underline">$1</a>');
         }
 
-        // PDF format toggle state — LaTeX is primary, html2pdf is the fallback
-        let pdfFormat = 'latex';
-        function setPdfFormat(fmt) {
-            pdfFormat = fmt;
-            const btnPdf   = document.getElementById('fmtPdf');
-            const btnLatex = document.getElementById('fmtLatex');
-            const active   = 'px-3 py-1.5 rounded-md transition-all bg-accent text-white shadow';
-            const inactive = 'px-3 py-1.5 rounded-md transition-all text-slate-400 hover:text-white';
-            if (fmt === 'pdf') {
-                btnPdf.className   = active;
-                btnLatex.className = inactive;
-                document.getElementById('pdfBtnText').textContent = 'Download PDF';
-            } else {
-                btnPdf.className   = inactive;
-                btnLatex.className = active;
-                document.getElementById('pdfBtnText').textContent = 'LaTeX PDF';
-            }
-        }
-
-        // Download handler — branches on selected format
+        // ── Download PDF via Puppeteer (server-side, real text PDF) ──────────
         document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
             if (!finalMarkdownOutput) return;
 
+            const btn = document.getElementById('downloadPdfBtn');
             const btnText = document.getElementById('pdfBtnText');
             const originalText = btnText.textContent;
             const companyName = (document.getElementById('companyName') || {}).value || 'Company';
 
-            document.getElementById('downloadPdfBtn').disabled = true;
+            btn.disabled = true;
 
-            // Animated "Downloading..." text
+            // Animated dots
             let dotCount = 0;
-            btnText.textContent = 'Downloading...';
+            btnText.textContent = 'Downloading.';
             const dotInterval = setInterval(() => {
                 dotCount = (dotCount + 1) % 4;
-                btnText.textContent = 'Downloading' + '.'.repeat(dotCount);
+                btnText.textContent = 'Downloading' + '.'.repeat(dotCount || 1);
             }, 400);
 
-            let fallbackToStandard = false;
-
-            // ── LATEX PATH ──────────────────────────────────────────────────
-            if (pdfFormat === 'latex') {
-                try {
-                    // AbortController to timeout AI generation after 12 seconds
-                    const ac = new AbortController();
-                    const timeoutId = setTimeout(() => ac.abort(), 12000);
-
-                    // Fetch the LaTeX source, passing the selected AI model
-                    const modelSelection = document.getElementById('modelSelection') ? document.getElementById('modelSelection').value : 'auto';
-                    const res = await fetch('/api/generate-latex-source', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ markdown: finalMarkdownOutput, companyName, modelSelection }),
-                        signal: ac.signal
-                    });
-                    clearTimeout(timeoutId);
-
-                    if (!res.ok) throw new Error(await res.text());
-                    const { latexSource, usedModel } = await res.json();
-                    
-                    showToast(`Used ${usedModel} for LaTeX generation.`, 'info');
-
-                    // Try compiling via texlive.net
-                    try {
-                        const FormDataObj = new FormData();
-                        const texBlob = new Blob([latexSource], { type: 'text/plain' });
-                        FormDataObj.append('filecontents[]', texBlob, 'document.tex');
-                        FormDataObj.append('filename[]', 'document.tex');
-                        FormDataObj.append('engine', 'pdflatex');
-                        FormDataObj.append('return', 'pdf');
-
-                        const compiled = await fetch('https://texlive.net/cgi-bin/latexcgi', {
-                            method: 'POST', body: FormDataObj
-                        });
-                        const ct = compiled.headers.get('content-type') || '';
-                        if (compiled.ok && ct.includes('pdf')) {
-                            const blob = await compiled.blob();
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url; a.download = `${companyName.replace(/\s+/g,'_')}_Deal_Brief.pdf`;
-                            document.body.appendChild(a); a.click(); a.remove();
-                            URL.revokeObjectURL(url);
-                            
-                            clearInterval(dotInterval);
-                            btnText.textContent = originalText;
-                            document.getElementById('downloadPdfBtn').disabled = false;
-                            return; // Success! Exit handler.
-                        }
-                    } catch(_) { /* compiler unavailable — fall through */ }
-
-                    // Fallback: compiler failed or timed out. Silently render html2pdf instead.
-                    showToast('LaTeX compiler unavailable. Generating fast fallback PDF...', 'info');
-                    fallbackToStandard = true;
-                } catch (err) {
-                    if (err.name === 'AbortError') {
-                        showToast('Optimizing format. Generating fast standard PDF...', 'info');
-                    } else {
-                        showToast('Formatting PDF natively...', 'info');
-                    }
-                    fallbackToStandard = true;
-                }
-                
-                // If the latex generation didn't need to fallback, we shouldn't reach here (it returned early).
-                // If it DID set fallbackToStandard, we let execution flow downwards into the HTML2PDF block.
-            }
-
-            // ── HTML2PDF PATH ────────────────────────────────────────────────
             try {
-                if (typeof html2pdf === 'undefined') throw new Error('PDF library not loaded yet. Please wait a moment and try again.');
+                const res = await fetch('/api/generate-pdf-puppeteer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markdown: finalMarkdownOutput, companyName })
+                });
 
-
-                // Convert markdown to clean professional HTML (LaTeX article style)
-                function mdToLatexHtml(md) {
-                    let html = md
-                        // Headers
-                        .replace(/^## References$/gim, '<h2 class="refs-header">References</h2>')
-                        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-                        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-                        // Bold / italic
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                        // Links
-                        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-                        // Numbered list items
-                        .replace(/^\d+\. (.*$)/gim, '<li class="num">$1</li>')
-                        // Bullet list items
-                        .replace(/^[-*] (.*$)/gim, '<li>$1</li>');
-
-                    // Wrap consecutive <li> into <ul> or <ol>
-                    html = html.replace(/(<li class="num">.*?<\/li>\n?)+/gs, m => `<ol>${m.replace(/ class="num"/g,'')}</ol>`);
-                    html = html.replace(/(<li>.*?<\/li>\n?)+/gs, m => `<ul>${m}</ul>`);
-
-                    // Paragraphs — split on double newlines, skip headings/lists
-                    html = html.split(/\n\n+/).map(block => {
-                        block = block.trim();
-                        if (!block) return '';
-                        if (/^<(h[123]|ul|ol|li)/.test(block)) return block;
-                        return `<p>${block.replace(/\n/g,' ')}</p>`;
-                    }).join('\n');
-
-                    return html;
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: res.statusText }));
+                    throw new Error(err.error || res.statusText);
                 }
 
-                const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-                const bodyHtml = mdToLatexHtml(finalMarkdownOutput);
-
-                const docHtml = `
-                <div id="pdf-render-target" style="
-                    font-family: 'Georgia', 'Times New Roman', Times, serif;
-                    font-size: 11pt;
-                    line-height: 1.6;
-                    color: #111;
-                    background: #fff;
-                    padding: 0;
-                    margin: 0;
-                    max-width: 100%;
-                    box-sizing: border-box;
-                ">
-                    <style>
-                        #pdf-render-target h1 { font-size: 20pt; font-weight: bold; margin: 0 0 4px 0; text-align: left; page-break-after: avoid; }
-                        #pdf-render-target .subtitle { font-size: 10pt; color: #555; margin: 0 0 2px 0; font-style: italic; page-break-after: avoid; }
-                        #pdf-render-target .dateline { font-size: 10pt; color: #555; margin: 0 0 24px 0; page-break-after: avoid; }
-                        #pdf-render-target .divider { border: none; border-top: 2px solid #1a2a4a; margin: 0 0 28px 0; page-break-after: avoid; }
-                        #pdf-render-target h2 { font-size: 13pt; font-weight: bold; color: #1a2a4a; text-transform: uppercase; letter-spacing: 0.04em; margin: 28px 0 4px 0; padding-bottom: 4px; border-bottom: 1px solid #c0c8d8; page-break-after: avoid; page-break-inside: avoid; }
-                        #pdf-render-target h3 { font-size: 11pt; font-weight: bold; color: #1a2a4a; margin: 16px 0 6px 0; page-break-after: avoid; page-break-inside: avoid; }
-                        #pdf-render-target p { margin: 0 0 10px 0; text-align: justify; orphans: 3; widows: 3; page-break-inside: avoid; }
-                        #pdf-render-target ul { margin: 6px 0 10px 20px; padding: 0; page-break-inside: avoid; }
-                        #pdf-render-target ol { margin: 6px 0 10px 20px; padding: 0; page-break-inside: avoid; }
-                        #pdf-render-target li { margin: 3px 0; page-break-inside: avoid; }
-                        #pdf-render-target a { color: #1a2a4a; }
-                        #pdf-render-target .refs-header { font-size: 11pt; font-weight: bold; color: #1a2a4a; text-transform: uppercase; letter-spacing: 0.04em; margin: 28px 0 4px 0; padding-bottom: 4px; border-bottom: 1px solid #c0c8d8; page-break-after: avoid; page-break-inside: avoid; }
-                        #pdf-render-target strong { font-weight: bold; }
-                        #pdf-render-target em { font-style: italic; }
-                        /* Prevent sections from being split across pages */
-                        #pdf-render-target .pdf-section { page-break-inside: avoid; }
-                    </style>
-
-                    <!-- Title Block -->
-                    <h1>Deal Brief: ${companyName}</h1>
-                    <p class="subtitle">Prepared by Fuse Capital Group</p>
-                    <p class="dateline">${today} &nbsp;&bull;&nbsp; Confidential &mdash; For Internal Review Only</p>
-                    <hr class="divider"/>
-
-                    <!-- Body -->
-                    ${bodyHtml}
-                </div>`;
-
-                // Inject into a hidden off-screen container
-                const container = document.createElement('div');
-                container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff;';
-                container.innerHTML = docHtml;
-                document.body.appendChild(container);
-                const target = container.querySelector('#pdf-render-target');
-
-                const opt = {
-                    margin: [15, 18, 15, 18],
-                    filename: `${companyName.replace(/\s+/g,'_')}_Deal_Brief.pdf`,
-                    image: { type: 'jpeg', quality: 0.99 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', windowWidth: 794 },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak: { mode: ['avoid-all', 'css'], before: '.pdf-page-break', avoid: ['h2', 'h3', '.refs-header', 'li', 'ul', 'ol', 'p'] }
-                };
-
-                await html2pdf().set(opt).from(target).save();
-                document.body.removeChild(container);
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${companyName.replace(/\s+/g, '_')}_Deal_Brief.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
 
             } catch (err) {
-                console.error('PDF generation failed:', err);
+                console.error('PDF download failed:', err);
                 alert('PDF generation failed: ' + err.message);
             } finally {
                 clearInterval(dotInterval);
                 btnText.textContent = originalText;
-                document.getElementById('downloadPdfBtn').disabled = false;
+                btn.disabled = false;
             }
         });
 
