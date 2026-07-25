@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+// Ensure puppeteer finds its Chrome on Render (must be set before require('puppeteer'))
+if (!process.env.PUPPETEER_CACHE_DIR) {
+    process.env.PUPPETEER_CACHE_DIR = '/opt/render/.cache/puppeteer';
+}
+
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
