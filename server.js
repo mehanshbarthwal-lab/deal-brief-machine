@@ -1,10 +1,5 @@
 require('dotenv').config();
 
-// Ensure puppeteer finds its Chrome on Render (must be set before require('puppeteer'))
-if (!process.env.PUPPETEER_CACHE_DIR) {
-    process.env.PUPPETEER_CACHE_DIR = '/opt/render/.cache/puppeteer';
-}
-
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
@@ -488,29 +483,22 @@ app.post('/api/generate-pdf-puppeteer', async (req, res) => {
 
     let browser;
     try {
-        // Lazy-load puppeteer so server starts even if install is incomplete
-        const puppeteer = require('puppeteer');
+        const puppeteer = require('puppeteer-core');
+        const chromium = require('@sparticuz/chromium');
 
-        // On Render and most Linux cloud hosts, --no-sandbox is required
-        const launchArgs = [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu'
-        ];
+        // Optional: override the path if we are testing locally and want to use local Chrome
+        // otherwise let sparticuz handle it.
+        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH 
+            ? process.env.PUPPETEER_EXECUTABLE_PATH 
+            : await chromium.executablePath();
 
-        // Use explicit executablePath so Render always finds the Chrome
-        // downloaded by the postinstall hook (avoids "Could not find Chrome" error).
-        // PUPPETEER_EXECUTABLE_PATH env var overrides everything (for puppeteer-core setups).
-        const launchOpts = { headless: true, args: launchArgs };
-        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-            launchOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-        } else {
-            // executablePath() returns a Promise in puppeteer v20+ — must await it
-            launchOpts.executablePath = await Promise.resolve(puppeteer.executablePath());
-        }
-
-        browser = await puppeteer.launch(launchOpts);
+        browser = await puppeteer.launch({
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: executablePath,
+            headless: chromium.headless,
+            ignoreHTTPSErrors: true,
+        });
         const page = await browser.newPage();
         await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
 

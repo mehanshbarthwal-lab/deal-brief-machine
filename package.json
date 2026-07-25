@@ -5,7 +5,6 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "postinstall": "npx puppeteer browsers install chrome",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -21,6 +21,6 @@
     "multer": "^2.2.0",
     "node-fetch": "^2.7.0",
     "pdf-parse": "^2.4.5",
-    "puppeteer": "^25.3.0"
+    "puppeteer-core": "^25.3.0"
   }
 }
