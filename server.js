@@ -484,7 +484,7 @@ app.post('/api/generate-pdf-puppeteer', async (req, res) => {
     let browser;
     try {
         const puppeteer = require('puppeteer-core');
-        const chromium = require('@sparticuz/chromium');
+        const chromium = require('@sparticuz/chromium').default || require('@sparticuz/chromium');
 
         // Optional: override the path if we are testing locally and want to use local Chrome
         // otherwise let sparticuz handle it.
